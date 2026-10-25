@@ -18,8 +18,9 @@ import {
 import { BilLogo } from '../common/BilLogo';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../i18n/LanguageContext';
-import { Language, Role } from '../../types';
+import { Language, Role, User } from '../../types';
 import { NavTab } from '../common/Sidebar';
+import { storage } from '../../db/storage';
 
 interface LoginScreenProps {
   onLoginSuccess?: (targetTab: NavTab) => void;
@@ -28,6 +29,10 @@ interface LoginScreenProps {
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const { login } = useAuth();
   const { language, setLanguage, t } = useLanguage();
+
+  const [registeredStaff, setRegisteredStaff] = useState<User[]>(() => {
+    return storage.getUsers().filter((u) => u.id !== 'user-admin');
+  });
 
   const [iin, setIin] = useState('');
   const [password, setPassword] = useState('');
@@ -238,160 +243,118 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           </div>
         </div>
 
-        {/* Right Column: Pre-configured Test Accounts Quick Access Panel */}
+        {/* Right Column: Master Admin & Registration Workflow */}
         <div className="lg:col-span-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-amber-400" />
               <h3 className="text-sm font-extrabold text-white">
-                Тексеруге арналған аккаунттар (1-басумен кіру)
+                Бас әкімші (Master Admin) аккаунты
               </h3>
             </div>
-            <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
-              Дайын логиндер
+            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full border border-emerald-400/20">
+              Таза база (Zero data)
             </span>
           </div>
 
           <p className="text-xs text-slate-400">
-            Төмендегі ресми сынақ аккаунттарының бірін басып, жүйеге дереу кіріп толық функционалды тексеруге болады:
+            Жүйеде алдын ала жүктелген жасанды оқушылар немесе мұғалімдер жоқ. Төмендегі ресми әкімшімен кіріп, қызметкерлер мен оқушыларды тіркеңіз:
           </p>
 
-          <div className="grid grid-cols-1 gap-3">
-            {/* Account 1: Dormitory Manager */}
+          <div className="space-y-3">
+            {/* Primary Master Admin: Dostonbek Tajihanov */}
             <button
               onClick={() => handleQuickFill('900101300000', 'BIL#1234')}
-              className="p-4 rounded-2xl bg-[#1E293B]/70 hover:bg-[#1E293B] border border-amber-500/30 hover:border-amber-400 text-left transition group shadow-md"
+              className="w-full p-4 rounded-2xl bg-gradient-to-r from-[#1E293B] to-[#1E1B4B] hover:from-[#1E293B] hover:to-[#312E81] border-2 border-amber-500/40 hover:border-amber-400 text-left transition group shadow-xl"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
-                    <Shield className="w-5 h-5" />
+                  <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+                    <Shield className="w-6 h-6" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-white group-hover:text-amber-300 transition">
+                      <span className="text-sm font-black text-white group-hover:text-amber-300 transition">
                         Достонбек Тажиханов
                       </span>
-                      <span className="text-[10px] font-bold px-2 py-0.2 rounded-md bg-amber-500 text-slate-950">
-                        Меңгеруші (Админ)
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-500 text-slate-950">
+                        Жатақхана меңгерушісі
                       </span>
                     </div>
-                    <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                      ЖСН: <span className="text-amber-300 font-bold">900101300000</span> • Құпиясөз: <span className="text-slate-200">BIL#1234</span>
+                    <div className="text-[11px] text-slate-300 font-mono mt-0.5">
+                      Логин (ЖСН): <span className="text-amber-300 font-bold">900101300000</span> • Құпиясөз: <span className="text-slate-100 font-bold">BIL#1234</span>
                     </div>
                   </div>
                 </div>
-                <div className="hidden sm:flex items-center gap-1 text-xs font-bold text-amber-400 group-hover:translate-x-1 transition-transform">
-                  <span>Кіру</span>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold group-hover:bg-amber-500 group-hover:text-slate-950 transition">
+                  <span>1-басумен кіру</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </div>
               </div>
-              <p className="text-[11px] text-slate-400 mt-2 pl-13">
-                Мүмкіндік: Қызметкерлерді тіркеу (ИИН + BIL# құпиясөз), сыныптар, оқу жылы, толық әкімшілік.
+              <p className="text-[11px] text-slate-400 mt-2.5 pl-14">
+                Эксклюзивті құқық: Тәрбиешілер мен мұғалімдерді ЖСН арқылы тіркеу, автоматты BIL# құпиясөз жасау, сынып бекіту және базаны басқару.
               </p>
             </button>
 
-            {/* Account 2: Educator */}
-            <button
-              onClick={() => handleQuickFill('900512300451', 'BIL#7821')}
-              className="p-4 rounded-2xl bg-[#1E293B]/70 hover:bg-[#1E293B] border border-emerald-500/30 hover:border-emerald-400 text-left transition group shadow-md"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
-                    <BookOpen className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-white group-hover:text-emerald-300 transition">
-                        Ерлан Бақытұлы
-                      </span>
-                      <span className="text-[10px] font-bold px-2 py-0.2 rounded-md bg-emerald-500 text-slate-950">
-                        Тәрбиеші (Educator)
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                      ЖСН: <span className="text-emerald-300 font-bold">900512300451</span> • Құпиясөз: <span className="text-slate-200">BIL#7821</span>
-                    </div>
-                  </div>
+            {/* If Manager has registered staff in this browser session, show them here */}
+            {registeredStaff.length > 0 ? (
+              <div className="p-4 rounded-2xl bg-[#1E293B]/80 border border-indigo-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                    <UserCheck className="w-4 h-4 text-emerald-400" />
+                    Меңгеруші тіркеген қызметкерлер ({registeredStaff.length}):
+                  </span>
+                  <span className="text-[10px] text-slate-400">1-басумен кіру</span>
                 </div>
-                <div className="hidden sm:flex items-center gap-1 text-xs font-bold text-emerald-400 group-hover:translate-x-1 transition-transform">
-                  <span>Кіру</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {registeredStaff.map((staff) => (
+                    <button
+                      key={staff.id}
+                      onClick={() => handleQuickFill(staff.iin || '', staff.password || '')}
+                      className="w-full p-2.5 rounded-xl bg-slate-900/60 hover:bg-slate-900 border border-slate-700 hover:border-indigo-400 text-left transition flex items-center justify-between text-xs"
+                    >
+                      <div>
+                        <div className="font-bold text-white flex items-center gap-1.5">
+                          <span>{staff.name}</span>
+                          <span className="text-[10px] text-slate-400 font-normal">
+                            ({staff.role === 'EDUCATOR' ? 'Тәрбиеші' : staff.role === 'CLASS_TEACHER' ? 'Сынып жетекшісі' : staff.role})
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                          ЖСН: <span className="text-emerald-300">{staff.iin}</span> • Пароль: <span className="text-slate-300">{staff.password}</span>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-3.5 h-3.5 text-indigo-400" />
+                    </button>
+                  ))}
                 </div>
               </div>
-              <p className="text-[11px] text-slate-400 mt-2 pl-13">
-                Мүмкіндік: 7A сыныбын басқару (26 оқушы шегі), кешкі 3-қадамдық дайындық (19:00-21:00).
-              </p>
-            </button>
+            ) : null}
 
-            {/* Account 3: Class Teacher */}
-            <button
-              onClick={() => handleQuickFill('850922400123', 'BIL#3490')}
-              className="p-4 rounded-2xl bg-[#1E293B]/70 hover:bg-[#1E293B] border border-blue-500/30 hover:border-blue-400 text-left transition group shadow-md"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/30">
-                    <GraduationCap className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-white group-hover:text-blue-300 transition">
-                        Айнұр Серікқызы
-                      </span>
-                      <span className="text-[10px] font-bold px-2 py-0.2 rounded-md bg-blue-500 text-slate-950">
-                        Сынып жетекшісі
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                      ЖСН: <span className="text-blue-300 font-bold">850922400123</span> • Құпиясөз: <span className="text-slate-200">BIL#3490</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="hidden sm:flex items-center gap-1 text-xs font-bold text-blue-400 group-hover:translate-x-1 transition-transform">
-                  <span>Кіру</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </div>
+            {/* Official BIL Security & Workflow Info Card */}
+            <div className="p-4 rounded-2xl bg-[#1E293B]/60 border border-slate-700/80 space-y-2.5 text-xs text-slate-300">
+              <div className="flex items-center gap-2 text-indigo-400 font-bold">
+                <Lock className="w-4 h-4" />
+                <span>БІЛ жатақхана қауіпсіздік & тіркеу регламенті:</span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-2 pl-13">
-                Мүмкіндік: 7A сыныбының сабақ кестесін жасау/сақтау (Дүйсенбі–Жұма) және оқушылар үлгерімі.
-              </p>
-            </button>
-
-            {/* Account 4: Cafeteria Staff */}
-            <button
-              onClick={() => handleQuickFill('830516401056', 'BIL#9182')}
-              className="p-4 rounded-2xl bg-[#1E293B]/70 hover:bg-[#1E293B] border border-purple-500/30 hover:border-purple-400 text-left transition group shadow-md"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 border border-purple-500/30">
-                    <Utensils className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-white group-hover:text-purple-300 transition">
-                        Баян Әбдікерімқызы
-                      </span>
-                      <span className="text-[10px] font-bold px-2 py-0.2 rounded-md bg-purple-500 text-slate-950">
-                        Асхана қызметкері
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                      ЖСН: <span className="text-purple-300 font-bold">830516401056</span> • Құпиясөз: <span className="text-slate-200">BIL#9182</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="hidden sm:flex items-center gap-1 text-xs font-bold text-purple-400 group-hover:translate-x-1 transition-transform">
-                  <span>Кіру</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </div>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-2 pl-13">
-                Мүмкіндік: Демалыс күнгі 8 ас мәзіріне оқушылардың тіркелуін қадағалау.
-              </p>
-            </button>
+              <ul className="space-y-1.5 text-[11px] text-slate-400 pl-4 list-disc">
+                <li>
+                  <strong className="text-slate-200">Таза деректер:</strong> Барлық сыныптар 0 оқушымен басталады.
+                </li>
+                <li>
+                  <strong className="text-slate-200">Қызметкерді тіркеу:</strong> Тек меңгеруші (Достонбек Тажиханов) қызметкердің 12 таңбалы ЖСН енгізіп, автоматты BIL# уақытша құпиясөз береді.
+                </li>
+                <li>
+                  <strong className="text-slate-200">Пароль өзгерту:</strong> Тәрбиеші немесе мұғалім жүйеге кірген соң «Құпиясөзді өзгерту» бөлімінде жеке құпиясөзін орнатады.
+                </li>
+                <li>
+                  <strong className="text-slate-200">Сынып оқшаулау:</strong> Әр тәрбиеші тек өзіне бекітілген сыныпты ғана көре алады және 26 оқушыға дейін тіркейді.
+                </li>
+                <li>
+                  <strong className="text-slate-200">Шығу (Шығу):</strong> «Шығу» батырмасын басқанда сессия толық жабылып, оқушылар мәліметі экраннан бірден жойылады.
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>

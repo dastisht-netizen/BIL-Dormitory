@@ -29,7 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     const authFlag = localStorage.getItem('bil_authenticated');
-    return authFlag !== 'false';
+    return authFlag === 'true';
   });
 
   const [currentUser, setCurrentUserState] = useState<User>(() => {
@@ -69,25 +69,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const all = storage.getUsers();
     const cleanId = identifier.trim().toLowerCase();
 
-    // Match by IIN, email, username prefix, or role
+    // Match by 12-digit IIN, email, or exact ID
     const found = all.find(
       (u) =>
         (u.iin && u.iin.trim() === cleanId) ||
         u.email.toLowerCase() === cleanId ||
         u.id.toLowerCase() === cleanId ||
-        u.name.toLowerCase().includes(cleanId) ||
-        (cleanId === 'admin' && u.role === 'ADMINISTRATOR') ||
-        (cleanId === 'educator' && u.role === 'EDUCATOR') ||
-        (cleanId === 'teacher' && u.role === 'CLASS_TEACHER') ||
-        (cleanId === 'cafeteria' && u.role === 'CAFETERIA_STAFF')
+        u.name.toLowerCase().includes(cleanId)
     );
 
     if (!found) {
-      return { success: false, message: 'Қолданушы табылмады. 12 таңбалы ЖСН (ИИН) немесе логинді дұрыс енгізіңіз.' };
+      return { success: false, message: 'Қолданушы табылмады. 12 таңбалы ЖСН (ИИН) енгізіңіз.' };
     }
 
     // Password check if provided
-    if (password && found.password && found.password !== password.trim()) {
+    if (password && found.password && found.password.trim() !== password.trim()) {
       return { success: false, message: 'Құпиясөз қате. Қайталап көріңіз.' };
     }
 
@@ -100,6 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     localStorage.setItem('bil_authenticated', 'false');
+    localStorage.removeItem('bil_current_user_id');
     setIsAuthenticated(false);
   };
 

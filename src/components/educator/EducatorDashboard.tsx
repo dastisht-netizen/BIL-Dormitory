@@ -438,17 +438,28 @@ export const EducatorDashboard: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3">
           <div>
             <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.filterClass}</label>
-            <select
-              value={selectedClassId}
-              onChange={(e) => setSelectedClassId(e.target.value)}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#F8FAF9] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62] text-[#24342D]"
-            >
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} сыныбы
-                </option>
-              ))}
-            </select>
+            {classes.length === 0 ? (
+              <span className="text-xs text-rose-500 font-bold bg-rose-50 px-3 py-2 rounded-xl border border-rose-200 block">
+                Сынып бекітілмеген
+              </span>
+            ) : !isAdmin && classes.length === 1 ? (
+              <div className="px-3.5 py-2 rounded-xl text-xs font-black bg-indigo-50 border border-indigo-200 text-[#4338CA] flex items-center gap-1.5 shadow-2xs">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>{classes[0].name} сыныбы (Бекітілген)</span>
+              </div>
+            ) : (
+              <select
+                value={selectedClassId}
+                onChange={(e) => setSelectedClassId(e.target.value)}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#F8FAF9] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62] text-[#24342D]"
+              >
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} сыныбы
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>
@@ -510,8 +521,34 @@ export const EducatorDashboard: React.FC = () => {
       {/* TAB 1: STUDY SESSION MONITORING */}
       {activeEducatorTab === 'study_session' && (
         <div className="space-y-6">
-          {/* Submission Success Alert */}
-          {submissionSuccess && (
+          {students.length === 0 ? (
+            <div className="bg-white rounded-3xl p-8 sm:p-12 border border-gray-100 shadow-xs text-center space-y-4">
+              <div className="w-16 h-16 rounded-3xl bg-[#E6F4EA] text-[#075C42] flex items-center justify-center mx-auto shadow-xs">
+                <Users className="w-8 h-8" />
+              </div>
+              <div className="max-w-md mx-auto">
+                <h3 className="font-extrabold text-lg text-[#24342D]">
+                  Сыныпта әлі оқушылар тіркелмеген (0 / {MAX_STUDENTS_PER_CLASS})
+                </h3>
+                <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                  Кешкі өзіндік дайындық бақылауын жүргізу үшін алдымен осы сыныпқа оқушыларды тіркеңіз (әр сыныпқа максимум 26 оқушы).
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setActiveEducatorTab('my_students');
+                  handleOpenAddStudent();
+                }}
+                className="px-6 py-3 rounded-2xl bg-[#075C42] hover:bg-[#054531] text-white text-xs font-extrabold transition inline-flex items-center gap-2 shadow-md shadow-[#075C42]/20 cursor-pointer"
+              >
+                <Plus className="w-4 h-4 text-[#FFE9A8]" />
+                <span>+ Оқушыларды тіркеуге өту</span>
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Submission Success Alert */}
+              {submissionSuccess && (
         <div className="p-4 rounded-2xl bg-[#E6F4EA] border border-[#138A62]/30 flex items-center justify-between animate-in fade-in">
           <div className="flex items-center gap-3">
             <ShieldCheck className="w-6 h-6 text-[#075C42]" />
@@ -911,8 +948,10 @@ export const EducatorDashboard: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
-  )}
+      </>
+    )}
+  </div>
+)}
 
       {/* TAB 2: MY CLASS STUDENTS MANAGEMENT WITH 26-STUDENT LIMIT */}
       {activeEducatorTab === 'my_students' && (
@@ -1036,8 +1075,29 @@ export const EducatorDashboard: React.FC = () => {
                 <tbody className="divide-y divide-gray-100">
                   {filteredStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-gray-400 text-xs">
-                        Оқушылар табылмады
+                      <td colSpan={7} className="py-12 text-center">
+                        <div className="max-w-sm mx-auto space-y-3">
+                          <div className="w-12 h-12 rounded-2xl bg-[#E6F4EA] text-[#075C42] flex items-center justify-center mx-auto">
+                            <Users className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <p className="font-extrabold text-sm text-[#24342D]">
+                              {studentSearch ? 'Іздеу бойынша оқушы табылмады' : `Бұл сыныпта әлі оқушылар тіркелмеген (0 / ${MAX_STUDENTS_PER_CLASS})`}
+                            </p>
+                            <p className="text-[11px] text-gray-400 mt-1">
+                              {studentSearch ? 'Басқа сөз немесе бөлме нөмірімен іздеп көріңіз' : 'Төмендегі батырмамен сыныбыңызға оқушыларды тіркеңіз'}
+                            </p>
+                          </div>
+                          {!studentSearch && (
+                            <button
+                              onClick={handleOpenAddStudent}
+                              className="px-4 py-2 rounded-xl bg-[#075C42] hover:bg-[#054531] text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm cursor-pointer transition"
+                            >
+                              <Plus className="w-3.5 h-3.5 text-[#FFE9A8]" />
+                              <span>Жаңа оқушы қосу</span>
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ) : (

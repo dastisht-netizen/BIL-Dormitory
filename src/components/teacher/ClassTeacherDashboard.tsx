@@ -63,14 +63,17 @@ export const ClassTeacherDashboard: React.FC = () => {
 
   useEffect(() => {
     const allClasses = storage.getClasses();
-    setClasses(allClasses);
+    const available = isAdmin
+      ? allClasses
+      : allClasses.filter((c) => currentUser.assignedClassIds?.includes(c.id));
+    setClasses(available);
     setSubjects(storage.getSubjects());
 
     // If current user is class teacher, select their class
-    if (currentUser.assignedClassIds && currentUser.assignedClassIds.length > 0) {
-      setSelectedClassId(currentUser.assignedClassIds[0]);
+    if (available.length > 0) {
+      setSelectedClassId(available[0].id);
     }
-  }, [currentUser]);
+  }, [currentUser, isAdmin]);
 
   useEffect(() => {
     const allStudents = storage.getStudents().filter((s) => s.classId === selectedClassId && s.status === 'active');

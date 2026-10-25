@@ -17,20 +17,20 @@ import {
 } from '../types';
 
 const STORAGE_KEYS = {
-  USERS: 'bil_users_v1',
-  YEARS: 'bil_years_v1',
-  CLASSES: 'bil_classes_v1',
-  SUBJECTS: 'bil_subjects_v1',
-  TIMETABLES: 'bil_timetables_v1',
-  STUDENTS: 'bil_students_v1',
-  SESSIONS: 'bil_sessions_v1',
-  ATTENDANCE: 'bil_attendance_v1',
-  HOMEWORK: 'bil_homework_v1',
-  MEALS: 'bil_meals_v1',
-  DORMITORY: 'bil_dormitory_v1',
-  AUDIT: 'bil_audit_v1',
-  SETTINGS: 'bil_settings_v1',
-  SITE_CONFIG: 'bil_site_config_v1',
+  USERS: 'bil_users_v2',
+  YEARS: 'bil_years_v2',
+  CLASSES: 'bil_classes_v2',
+  SUBJECTS: 'bil_subjects_v2',
+  TIMETABLES: 'bil_timetables_v2',
+  STUDENTS: 'bil_students_v2',
+  SESSIONS: 'bil_sessions_v2',
+  ATTENDANCE: 'bil_attendance_v2',
+  HOMEWORK: 'bil_homework_v2',
+  MEALS: 'bil_meals_v2',
+  DORMITORY: 'bil_dormitory_v2',
+  AUDIT: 'bil_audit_v2',
+  SETTINGS: 'bil_settings_v2',
+  SITE_CONFIG: 'bil_site_config_v2',
 };
 
 export const INITIAL_SITE_CONFIG: SiteConfig = {
@@ -94,7 +94,7 @@ export const INITIAL_YEARS: AcademicYear[] = [
 
 export const MAX_STUDENTS_PER_CLASS = 26;
 
-// Initial Users
+// Initial Users (Таза база: тек Жатақхана меңгерушісі / Бас әкімші)
 export const INITIAL_USERS: User[] = [
   {
     id: 'user-admin',
@@ -105,111 +105,21 @@ export const INITIAL_USERS: User[] = [
     role: 'ADMINISTRATOR',
     phone: '+7 701 555 0101',
   },
-  {
-    id: 'user-edu-1',
-    name: 'Ерлан Бақытұлы',
-    email: 'erlan.b@bil-arys.edu.kz',
-    iin: '900512300451',
-    password: 'BIL#7821',
-    role: 'EDUCATOR',
-    assignedClassIds: ['cls-7a', 'cls-7b'],
-    phone: '+7 702 333 4455',
-  },
-  {
-    id: 'user-edu-2',
-    name: 'Дәулет Мұратұлы',
-    email: 'daulet.m@bil-arys.edu.kz',
-    iin: '940321302715',
-    password: 'BIL#3915',
-    role: 'EDUCATOR',
-    assignedClassIds: ['cls-8a', 'cls-8b'],
-    phone: '+7 705 444 6677',
-  },
-  {
-    id: 'user-edu-3',
-    name: 'Бауыржан Серікұлы',
-    email: 'bauyrzhan.s@bil-arys.edu.kz',
-    iin: '950811303628',
-    password: 'BIL#5178',
-    role: 'EDUCATOR',
-    assignedClassIds: ['cls-9a'],
-    phone: '+7 701 444 8899',
-  },
-  {
-    id: 'user-teacher-7a',
-    name: 'Айнұр Серікқызы',
-    email: 'ainur.s@bil-arys.edu.kz',
-    iin: '850922400123',
-    password: 'BIL#3490',
-    role: 'CLASS_TEACHER',
-    assignedClassIds: ['cls-7a'],
-    phone: '+7 707 888 9900',
-  },
-  {
-    id: 'user-teacher-8a',
-    name: 'Гүлнәр Асқарқызы',
-    email: 'gulnar.a@bil-arys.edu.kz',
-    iin: '890218402834',
-    password: 'BIL#6382',
-    role: 'CLASS_TEACHER',
-    assignedClassIds: ['cls-8a'],
-    phone: '+7 775 111 2233',
-  },
-  {
-    id: 'user-teacher-9a',
-    name: 'Мәдина Қанатқызы',
-    email: 'madina.q@bil-arys.edu.kz',
-    iin: '910729403745',
-    password: 'BIL#4926',
-    role: 'CLASS_TEACHER',
-    assignedClassIds: ['cls-9a'],
-    phone: '+7 777 555 1122',
-  },
-  {
-    id: 'user-cafeteria',
-    name: 'Баян Әбдікерімқызы',
-    email: 'cafeteria@bil-arys.edu.kz',
-    iin: '830516401056',
-    password: 'BIL#9182',
-    role: 'CAFETERIA_STAFF',
-    phone: '+7 778 999 0011',
-  },
 ];
 
-// Initial Classes
+// Initial Classes (Қызметкерлерді жатақхана меңгерушісі бекітеді)
 export const INITIAL_CLASSES: SchoolClass[] = [
-  { id: 'cls-7a', name: '7A', grade: 7, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-1', classTeacherId: 'user-teacher-7a' },
-  { id: 'cls-7b', name: '7B', grade: 7, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-1' },
-  { id: 'cls-8a', name: '8A', grade: 8, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-2', classTeacherId: 'user-teacher-8a' },
-  { id: 'cls-8b', name: '8B', grade: 8, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-2' },
-  { id: 'cls-9a', name: '9A', grade: 9, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-3', classTeacherId: 'user-teacher-9a' },
+  { id: 'cls-7a', name: '7A', grade: 7, academicYearId: 'ay-2026-2027' },
+  { id: 'cls-7b', name: '7B', grade: 7, academicYearId: 'ay-2026-2027' },
+  { id: 'cls-8a', name: '8A', grade: 8, academicYearId: 'ay-2026-2027' },
+  { id: 'cls-8b', name: '8B', grade: 8, academicYearId: 'ay-2026-2027' },
+  { id: 'cls-9a', name: '9A', grade: 9, academicYearId: 'ay-2026-2027' },
   { id: 'cls-10a', name: '10A', grade: 10, academicYearId: 'ay-2026-2027' },
   { id: 'cls-11a', name: '11A', grade: 11, academicYearId: 'ay-2026-2027' },
 ];
 
-// Initial Students
-export const INITIAL_STUDENTS: Student[] = [
-  // 7A Students
-  { id: 'BIL-2026-701', fullName: 'Алихан Аманжолұлы', classId: 'cls-7a', academicYearId: 'ay-2026-2027', status: 'active', gender: 'male', roomNumber: '201', parentPhone: '+7 701 111 2233' },
-  { id: 'BIL-2026-702', fullName: 'Нұрислам Берікұлы', classId: 'cls-7a', academicYearId: 'ay-2026-2027', status: 'active', gender: 'male', roomNumber: '201', parentPhone: '+7 702 222 3344' },
-  { id: 'BIL-2026-703', fullName: 'Санжар Даниярұлы', classId: 'cls-7a', academicYearId: 'ay-2026-2027', status: 'active', gender: 'male', roomNumber: '202', parentPhone: '+7 705 333 4455' },
-  { id: 'BIL-2026-704', fullName: 'Мансұр Ержанұлы', classId: 'cls-7a', academicYearId: 'ay-2026-2027', status: 'active', gender: 'male', roomNumber: '202', parentPhone: '+7 707 444 5566' },
-  { id: 'BIL-2026-705', fullName: 'Батырхан Жандосұлы', classId: 'cls-7a', academicYearId: 'ay-2026-2027', status: 'active', gender: 'male', roomNumber: '203', parentPhone: '+7 775 555 6677' },
-  { id: 'BIL-2026-706', fullName: 'Әділет Қайратұлы', classId: 'cls-7a', academicYearId: 'ay-2026-2027', status: 'active', gender: 'male', roomNumber: '203', parentPhone: '+7 778 666 7788' },
-  { id: 'BIL-2026-707', fullName: 'Рамазан Мақсатұлы', classId: 'cls-7a', academicYearId: 'ay-2026-2027', status: 'active', gender: 'male', roomNumber: '204', parentPhone: '+7 708 777 8899' },
-  { id: 'BIL-2026-708', fullName: 'Шыңғыс Нұрланұлы', classId: 'cls-7a', academicYearId: 'ay-2026-2027', status: 'active', gender: 'male', roomNumber: '204', parentPhone: '+7 747 888 9900' },
-
-  // 8A Students
-  { id: 'BIL-2026-801', fullName: 'Айбол Өмірзақұлы', classId: 'cls-8a', academicYearId: 'ay-2026-2027', status: 'active', gender: 'male', roomNumber: '301', parentPhone: '+7 701 999 1122' },
-  { id: 'BIL-2026-802', fullName: 'Бексұлтан Русланұлы', classId: 'cls-8a', academicYearId: 'ay-2026-2027', status: 'active', gender: 'male', roomNumber: '301', parentPhone: '+7 702 888 2233' },
-  { id: 'BIL-2026-803', fullName: 'Дінмұхаммед Саматұлы', classId: 'cls-8a', academicYearId: 'ay-2026-2027', status: 'active', gender: 'male', roomNumber: '302', parentPhone: '+7 705 777 3344' },
-  { id: 'BIL-2026-804', fullName: 'Елдар Талғатұлы', classId: 'cls-8a', academicYearId: 'ay-2026-2027', status: 'active', gender: 'male', roomNumber: '302', parentPhone: '+7 707 666 4455' },
-  { id: 'BIL-2026-805', fullName: 'Жалғас Ұланұлы', classId: 'cls-8a', academicYearId: 'ay-2026-2027', status: 'active', gender: 'male', roomNumber: '303', parentPhone: '+7 775 555 5566' },
-
-  // 7B Students
-  { id: 'BIL-2026-711', fullName: 'Арсен Асхатұлы', classId: 'cls-7b', academicYearId: 'ay-2026-2027', status: 'active', gender: 'male', roomNumber: '205', parentPhone: '+7 778 444 3322' },
-  { id: 'BIL-2026-712', fullName: 'Диас Ғаниұлы', classId: 'cls-7b', academicYearId: 'ay-2026-2027', status: 'active', gender: 'male', roomNumber: '205', parentPhone: '+7 708 333 2211' },
-];
+// Initial Students (Таза база: алдын ала енгізілген оқушы жоқ, 0 оқушы)
+export const INITIAL_STUDENTS: Student[] = [];
 
 // Initial Timetables
 export const INITIAL_TIMETABLES: TimetableEntry[] = [
@@ -325,7 +235,7 @@ class StorageService {
     }
   }
 
-  // Initialization check
+  // Initialization check (Таза база: ешқандай жасанды оқушы немесе тәрбиеші жоқ)
   public initDatabase(): void {
     if (!localStorage.getItem(STORAGE_KEYS.YEARS)) {
       this.setItem(STORAGE_KEYS.YEARS, INITIAL_YEARS);
@@ -336,11 +246,25 @@ class StorageService {
       this.setItem(STORAGE_KEYS.STUDENTS, INITIAL_STUDENTS);
       this.setItem(STORAGE_KEYS.SETTINGS, INITIAL_SETTINGS);
       this.setItem(STORAGE_KEYS.SITE_CONFIG, INITIAL_SITE_CONFIG);
-      this.setItem(STORAGE_KEYS.AUDIT, INITIAL_AUDIT_LOGS);
-
-      // Seed initial attendance & homework for demonstration
-      this.seedInitialDailyRecords();
-      this.seedInitialWeekendRecords();
+      this.setItem(STORAGE_KEYS.AUDIT, [
+        {
+          id: 'audit-001',
+          userId: 'user-admin',
+          userName: 'Достонбек Тажиханов',
+          userRole: 'ADMINISTRATOR',
+          action: 'INIT_SYSTEM',
+          entityType: 'system',
+          previousValue: 'None',
+          newValue: 'Таза деректер қоры іске қосылды',
+          timestamp: new Date().toISOString(),
+          details: 'Арыс БІЛ жатақхана жүйесі бастапқы таза күйде сәтті іске қосылды',
+        },
+      ]);
+      this.setItem(STORAGE_KEYS.SESSIONS, []);
+      this.setItem(STORAGE_KEYS.ATTENDANCE, []);
+      this.setItem(STORAGE_KEYS.HOMEWORK, []);
+      this.setItem(STORAGE_KEYS.MEALS, []);
+      this.setItem(STORAGE_KEYS.DORMITORY, []);
     }
     // ensure site config exists even if upgraded
     if (!localStorage.getItem(STORAGE_KEYS.SITE_CONFIG)) {
@@ -348,116 +272,23 @@ class StorageService {
     }
   }
 
-  // Pre-seed some realistic attendance & homework
-  private seedInitialDailyRecords(): void {
-    const today = new Date().toISOString().split('T')[0];
-    const classId = 'cls-7a';
-    const educatorId = 'user-edu-1';
-
-    // Session
-    const session: SelfStudySession = {
-      id: `session-${classId}-${today}`,
-      classId,
-      date: today,
-      educatorId,
-      startedAt: '19:02:10',
-      completedAt: '20:49:33',
-      isSubmitted: true,
-      targetDateForHomework: this.getNextSchoolDay(today).date,
-    };
-    this.saveSession(session);
-
-    // Students attendance
-    const attendance: AttendanceRecord[] = [
-      { id: `att-701-${today}`, sessionId: session.id, studentId: 'BIL-2026-701', classId, date: today, status: 'present', updatedAt: `${today}T19:05:00Z`, updatedBy: educatorId },
-      { id: `att-702-${today}`, sessionId: session.id, studentId: 'BIL-2026-702', classId, date: today, status: 'present', updatedAt: `${today}T19:05:00Z`, updatedBy: educatorId },
-      { id: `att-703-${today}`, sessionId: session.id, studentId: 'BIL-2026-703', classId, date: today, status: 'late', comment: 'Кітапханада болды', updatedAt: `${today}T19:15:00Z`, updatedBy: educatorId },
-      { id: `att-704-${today}`, sessionId: session.id, studentId: 'BIL-2026-704', classId, date: today, status: 'present', updatedAt: `${today}T19:05:00Z`, updatedBy: educatorId },
-      { id: `att-705-${today}`, sessionId: session.id, studentId: 'BIL-2026-705', classId, date: today, status: 'sick', comment: 'Медпунктте', updatedAt: `${today}T19:06:00Z`, updatedBy: educatorId },
-      { id: `att-706-${today}`, sessionId: session.id, studentId: 'BIL-2026-706', classId, date: today, status: 'present', updatedAt: `${today}T19:05:00Z`, updatedBy: educatorId },
-      { id: `att-707-${today}`, sessionId: session.id, studentId: 'BIL-2026-707', classId, date: today, status: 'present', updatedAt: `${today}T19:05:00Z`, updatedBy: educatorId },
-      { id: `att-708-${today}`, sessionId: session.id, studentId: 'BIL-2026-708', classId, date: today, status: 'present', updatedAt: `${today}T19:05:00Z`, updatedBy: educatorId },
-    ];
-    this.setItem(STORAGE_KEYS.ATTENDANCE, attendance);
-
-    // Homework for next day's subjects
-    const nextDay = this.getNextSchoolDay(today);
-    const targetSubjects = this.getSubjectsForClassOnDay(classId, nextDay.dayOfWeek);
-
-    const homework: HomeworkRecord[] = [];
-    const students7a = INITIAL_STUDENTS.filter(s => s.classId === classId);
-
-    students7a.forEach((st, idx) => {
-      targetSubjects.forEach((sub, subIdx) => {
-        let status: HomeworkRecord['status'] = 'completed';
-        if (st.id === 'BIL-2026-705') status = 'not_checked'; // sick
-        else if (subIdx === 1 && idx % 3 === 0) status = 'partially_completed';
-        else if (subIdx === 2 && idx === 1) status = 'not_completed';
-        else if (subIdx === 4 && idx % 2 === 0) status = 'no_homework';
-
-        homework.push({
-          id: `hw-${st.id}-${sub.id}-${today}`,
-          sessionId: session.id,
-          studentId: st.id,
-          subjectId: sub.id,
-          classId,
-          date: today,
-          targetDate: nextDay.date,
-          status,
-          updatedAt: `${today}T20:30:00Z`,
-          updatedBy: educatorId,
-        });
-      });
-    });
-
-    this.setItem(STORAGE_KEYS.HOMEWORK, homework);
-  }
-
-  private seedInitialWeekendRecords(): void {
-    const today = new Date();
-    // Get closest Thursday/Friday for current weekend
-    const weekStartDate = new Date(today.setDate(today.getDate() - today.getDay() + 4)).toISOString().split('T')[0];
-
-    const mealRecords: WeekendMealRecord[] = [];
-    const dormRecords: DormitoryStayRecord[] = [];
-
-    INITIAL_STUDENTS.forEach((st, index) => {
-      const staying = index % 3 !== 0; // 2/3 stay in dormitory
-      dormRecords.push({
-        id: `dorm-${st.id}-${weekStartDate}`,
-        studentId: st.id,
-        classId: st.classId,
-        weekStartDate,
-        isStaying: staying,
-        notes: staying ? 'Жатақханада дайындалады' : 'Ата-анасы үйге алып кетті',
-        updatedAt: `${weekStartDate}T15:00:00Z`,
-        updatedBy: 'user-edu-1',
-      });
-
-      const meals: Record<string, boolean> = {};
-      ALL_MEAL_PERIODS.forEach((m) => {
-        meals[m] = staying;
-      });
-
-      mealRecords.push({
-        id: `meal-${st.id}-${weekStartDate}`,
-        studentId: st.id,
-        classId: st.classId,
-        weekStartDate,
-        meals: meals as Record<any, boolean>,
-        updatedAt: `${weekStartDate}T15:00:00Z`,
-        updatedBy: 'user-edu-1',
-        isFinalized: true,
-      });
-    });
-
-    this.setItem(STORAGE_KEYS.MEALS, mealRecords);
-    this.setItem(STORAGE_KEYS.DORMITORY, dormRecords);
+  // Reset to clean zero-state (Таза базаға қайтару)
+  public resetToZeroDatabase(): void {
+    this.setItem(STORAGE_KEYS.USERS, INITIAL_USERS);
+    this.setItem(STORAGE_KEYS.CLASSES, INITIAL_CLASSES);
+    this.setItem(STORAGE_KEYS.STUDENTS, []);
+    this.setItem(STORAGE_KEYS.TIMETABLES, []);
+    this.setItem(STORAGE_KEYS.SESSIONS, []);
+    this.setItem(STORAGE_KEYS.ATTENDANCE, []);
+    this.setItem(STORAGE_KEYS.HOMEWORK, []);
+    this.setItem(STORAGE_KEYS.MEALS, []);
+    this.setItem(STORAGE_KEYS.DORMITORY, []);
   }
 
   // Reset to default sample
   public resetToSample(): void {
-    localStorage.removeItem(STORAGE_KEYS.YEARS);
+    this.resetToZeroDatabase();
+  }
     localStorage.removeItem(STORAGE_KEYS.USERS);
     localStorage.removeItem(STORAGE_KEYS.CLASSES);
     localStorage.removeItem(STORAGE_KEYS.SUBJECTS);

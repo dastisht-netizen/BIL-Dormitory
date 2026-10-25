@@ -21,7 +21,8 @@ import {
   BarChart2,
   FileSpreadsheet,
   Building2,
-  Users
+  Users,
+  KeyRound
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -29,8 +30,9 @@ import { storage } from '../../db/storage';
 import { PWAInstallButton } from '../pwa/PWAInstallButton';
 import { NotificationManager } from './NotificationManager';
 import { BilLogo } from './BilLogo';
-import { Language, Role } from '../../types';
+import { Language, Role, User } from '../../types';
 import { NavTab } from './Sidebar';
+import { PasswordChangeModal } from '../profile/PasswordChangeModal';
 
 interface HeaderProps {
   onOpenAdmin?: () => void;
@@ -57,6 +59,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin, activeTab = 'dashbo
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   // Login form state
   const [loginIdentifier, setLoginIdentifier] = useState('admin@bil-arys.edu.kz');
@@ -318,6 +321,16 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin, activeTab = 'dashbo
                 <ChevronDown className="w-3 h-3 text-slate-400" />
               </button>
 
+              {/* Password Change Button */}
+              <button
+                onClick={() => setShowPasswordModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500 hover:text-white transition text-xs font-bold shadow-xs cursor-pointer"
+                title="Жеке құпиясөзді өзгерту"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="hidden sm:inline">Пароль өзгерту</span>
+              </button>
+
               {/* Clear Logout Button */}
               <button
                 onClick={() => {
@@ -470,10 +483,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin, activeTab = 'dashbo
               </div>
 
               <p className="text-xs text-gray-500 mt-2">
-                Жүйенің кез келген бөлімін тексеру үшін рөлді таңдаңыз:
+                Жүйедегі рөлді таңдаңыз немесе жеке құпиясөзіңізді жаңартыңыз:
               </p>
 
-              <div className="mt-4 space-y-2.5">
+              <div className="mt-4 space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                {/* Master Admin */}
                 <button
                   onClick={() => {
                     handleQuickAdminLogin();
@@ -496,100 +510,94 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin, activeTab = 'dashbo
                   {isAdmin && <span className="text-xs font-bold text-amber-700 bg-amber-200/60 px-2 py-0.5 rounded-md">Белсенді</span>}
                 </button>
 
-                <button
-                  onClick={() => {
-                    switchRole('EDUCATOR', 'cls-7a');
-                    setShowRoleModal(false);
-                    if (onSelectTab) onSelectTab('self_study');
-                  }}
-                  className={`w-full flex items-center justify-between p-3.5 rounded-2xl border text-left transition ${
-                    isEducator && currentUser.assignedClassIds?.includes('cls-7a')
-                      ? 'border-[#138A62] bg-[#E6F4EA] text-[#075C42] font-bold'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center">
-                      <BookOpen className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-[#24342D]">Ерлан Бақытұлы</div>
-                      <div className="text-xs text-gray-500">Тәрбиеші (7A және 7B сыныптары)</div>
-                    </div>
-                  </div>
-                  {isEducator && currentUser.assignedClassIds?.includes('cls-7a') && (
-                    <span className="text-xs font-bold text-[#075C42] bg-emerald-200/60 px-2 py-0.5 rounded-md">Белсенді</span>
-                  )}
-                </button>
+                {/* Dynamically Registered Staff */}
+                {storage.getUsers().filter((u) => u.id !== 'user-admin').map((u) => {
+                  const isCurrent = currentUser.id === u.id;
+                  const roleTitle = u.role === 'EDUCATOR' ? 'Тәрбиеші' : u.role === 'CLASS_TEACHER' ? 'Сынып жетекшісі' : u.role;
+                  const assigned = u.assignedClassIds && u.assignedClassIds.length > 0 ? u.assignedClassIds.join(', ') : 'Сынып тағайындалмаған';
+                  return (
+                    <button
+                      key={u.id}
+                      onClick={() => {
+                        const res = login(u.iin || u.id, u.password);
+                        setShowRoleModal(false);
+                        if (res.success && onSelectTab) {
+                          if (u.role === 'EDUCATOR') onSelectTab('self_study');
+                          else if (u.role === 'CLASS_TEACHER') onSelectTab('dashboard');
+                          else onSelectTab('meals');
+                        }
+                      }}
+                      className={`w-full flex items-center justify-between p-3.5 rounded-2xl border text-left transition ${
+                        isCurrent
+                          ? 'border-[#4338CA] bg-indigo-50 text-[#4338CA] font-bold'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold">
+                          {u.name.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-[#24342D]">{u.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {roleTitle} • {assigned}
+                          </div>
+                        </div>
+                      </div>
+                      {isCurrent && <span className="text-xs font-bold text-indigo-700 bg-indigo-200/60 px-2 py-0.5 rounded-md">Белсенді</span>}
+                    </button>
+                  );
+                })}
 
-                <button
-                  onClick={() => {
-                    switchRole('CLASS_TEACHER', 'cls-7a');
-                    setShowRoleModal(false);
-                    if (onSelectTab) onSelectTab('students');
-                  }}
-                  className={`w-full flex items-center justify-between p-3.5 rounded-2xl border text-left transition ${
-                    isClassTeacher
-                      ? 'border-blue-600 bg-blue-50 text-blue-900 font-bold'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center">
-                      <GraduationCap className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-[#24342D]">Айнұр Серікқызы</div>
-                      <div className="text-xs text-gray-500">Сынып жетекшісі (7А сыныбы)</div>
-                    </div>
+                {storage.getUsers().filter((u) => u.id !== 'user-admin').length === 0 && (
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center text-xs text-slate-500">
+                    Әзірге басқа қызметкерлер тіркелмеген. Меңгеруші (Достонбек Тажиханов) қызметкерлерді тіркеген соң осында көрінеді.
                   </div>
-                  {isClassTeacher && <span className="text-xs font-bold text-blue-800 bg-blue-200/60 px-2 py-0.5 rounded-md">Белсенді</span>}
-                </button>
-
-                <button
-                  onClick={() => {
-                    switchRole('CAFETERIA_STAFF');
-                    setShowRoleModal(false);
-                    if (onSelectTab) onSelectTab('meals');
-                  }}
-                  className={`w-full flex items-center justify-between p-3.5 rounded-2xl border text-left transition ${
-                    isCafeteria
-                      ? 'border-purple-600 bg-purple-50 text-purple-900 font-bold'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center">
-                      <Utensils className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-[#24342D]">Баян Әбдікерімқызы</div>
-                      <div className="text-xs text-gray-500">Асхана қызметкері (Тамақтану есебі)</div>
-                    </div>
-                  </div>
-                  {isCafeteria && <span className="text-xs font-bold text-purple-800 bg-purple-200/60 px-2 py-0.5 rounded-md">Белсенді</span>}
-                </button>
+                )}
               </div>
 
-              <div className="mt-5 pt-3 border-t border-gray-100 flex items-center justify-between">
+              {/* Action: Change Password */}
+              <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
                 <button
                   onClick={() => {
                     setShowRoleModal(false);
-                    logout();
+                    setShowPasswordModal(true);
                   }}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold hover:bg-rose-100 transition cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-[#4338CA] text-xs font-bold hover:bg-indigo-100 transition cursor-pointer"
                 >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Жүйеден шығу</span>
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>Құпиясөзді өзгерту</span>
                 </button>
 
-                <button
-                  onClick={() => setShowRoleModal(false)}
-                  className="px-5 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition cursor-pointer"
-                >
-                  Жабу
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setShowRoleModal(false);
+                      logout();
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold hover:bg-rose-100 transition cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Шығу</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowRoleModal(false)}
+                    className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition cursor-pointer"
+                  >
+                    Жабу
+                  </button>
+                </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Self-service Password Change Modal */}
+        <PasswordChangeModal
+          isOpen={showPasswordModal}
+          onClose={() => setShowPasswordModal(false)}
+        />
             </div>
           </div>
         )}
