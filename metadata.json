@@ -1,0 +1,6 @@
+{
+  "name": "ARYS BIL STUDY TRACKER",
+  "description": "Comprehensive evening self-study, homework, attendance, weekend meals, and dormitory tracker for Arys BIL School in Kazakhstan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

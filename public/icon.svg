@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bilGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#075C42" />
+      <stop offset="100%" stop-color="#138A62" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFE9A8" />
+      <stop offset="100%" stop-color="#F5B838" />
+    </linearGradient>
+  </defs>
+  <!-- Background with subtle rounded shape -->
+  <rect width="512" height="512" rx="128" fill="url(#bilGrad)" />
+  <circle cx="256" cy="256" r="220" fill="none" stroke="#FFE9A8" stroke-width="4" stroke-opacity="0.3" stroke-dasharray="8 8" />
+  
+  <!-- Outer Crest Shield -->
+  <path d="M256 70 L390 130 V270 C390 355 256 430 256 430 C256 430 122 355 122 270 V130 Z" fill="#054531" stroke="url(#goldGrad)" stroke-width="10" />
+  
+  <!-- Open Book & Knowledge Rays -->
+  <path d="M256 220 L330 180 V310 L256 345 L182 310 V180 Z" fill="#E6F4EA" />
+  <path d="M256 220 V345" stroke="#075C42" stroke-width="5" />
+  <line x1="200" y1="210" x2="240" y2="230" stroke="#075C42" stroke-width="3" />
+  <line x1="200" y1="240" x2="240" y2="260" stroke="#075C42" stroke-width="3" />
+  <line x1="200" y1="270" x2="240" y2="290" stroke="#075C42" stroke-width="3" />
+  
+  <line x1="312" y1="210" x2="272" y2="230" stroke="#075C42" stroke-width="3" />
+  <line x1="312" y1="240" x2="272" y2="260" stroke="#075C42" stroke-width="3" />
+  <line x1="312" y1="270" x2="272" y2="290" stroke="#075C42" stroke-width="3" />
+  
+  <!-- Academic Torch / Sun on top -->
+  <circle cx="256" cy="145" r="22" fill="url(#goldGrad)" />
+  <path d="M256 115 L260 125 L272 125 L262 133 L266 145 L256 137 L246 145 L250 133 L240 125 L252 125 Z" fill="#FFFFFF" />
+
+  <!-- Text / Monogram -->
+  <text x="256" y="390" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="28" fill="#FFE9A8" letter-spacing="3">ARYS BIL</text>
+  <text x="256" y="414" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="14" fill="#E6F4EA" letter-spacing="4">STUDY TRACKER</text>
+</svg>
