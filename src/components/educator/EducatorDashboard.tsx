@@ -14,7 +14,13 @@ import {
   Info,
   ChevronRight,
   ShieldCheck,
-  User as UserIcon
+  User as UserIcon,
+  Users,
+  Plus,
+  Trash2,
+  Search,
+  ShieldAlert,
+  Edit3
 } from 'lucide-react';
 import {
   AttendanceRecord,
@@ -26,7 +32,7 @@ import {
   Student,
   Subject
 } from '../../types';
-import { storage } from '../../db/storage';
+import { storage, MAX_STUDENTS_PER_CLASS } from '../../db/storage';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { StudentModal } from '../students/StudentModal';
@@ -35,10 +41,21 @@ export const EducatorDashboard: React.FC = () => {
   const { currentUser, isAdmin, canAccessClass } = useAuth();
   const { t } = useLanguage();
 
+  const [activeEducatorTab, setActiveEducatorTab] = useState<'study_session' | 'my_students'>('study_session');
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+
+  // Student management state
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [newStudentName, setNewStudentName] = useState('');
+  const [newStudentRoom, setNewStudentRoom] = useState('201');
+  const [newStudentPhone, setNewStudentPhone] = useState('');
+  const [newStudentId, setNewStudentId] = useState('');
+  const [addStudentError, setAddStudentError] = useState<string | null>(null);
+  const [studentNotice, setStudentNotice] = useState<string | null>(null);
 
   const [session, setSession] = useState<SelfStudySession | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
@@ -329,6 +346,77 @@ export const EducatorDashboard: React.FC = () => {
     not_checked: { label: t.homeworkStatuses.not_checked, bg: 'bg-gray-200', text: 'text-gray-700', border: 'border-gray-300' },
   };
 
+  const reloadClassStudents = () => {
+    if (!selectedClassId) return;
+    const classStudents = storage.getStudents().filter((s) => s.classId === selectedClassId && s.status === 'active');
+    setStudents(classStudents);
+  };
+
+  const handleOpenAddStudent = () => {
+    setAddStudentError(null);
+    if (students.length >= MAX_STUDENTS_PER_CLASS) {
+      alert(`Сыныптағы максималды шек — ${MAX_STUDENTS_PER_CLASS} оқушы. Сынып 100% толы, жаңа оқушы қосу мүмкін емес!`);
+      return;
+    }
+    const gradeNum = classes.find((c) => c.id === selectedClassId)?.grade || 7;
+    setNewStudentName('');
+    setNewStudentPhone('');
+    setNewStudentRoom('201');
+    setNewStudentId(`BIL-2026-${gradeNum}0${students.length + 1}`);
+    setShowAddStudentModal(true);
+  };
+
+  const handleAddStudentSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddStudentError(null);
+
+    if (students.length >= MAX_STUDENTS_PER_CLASS) {
+      setAddStudentError(`Сыныптағы максималды шек — ${MAX_STUDENTS_PER_CLASS} оқушы. Жаңа оқушы қосу мүмкін емес!`);
+      return;
+    }
+
+    const currentYearId = storage.getCurrentAcademicYear().id;
+    const studentIdToUse = newStudentId.trim() || `BIL-2026-${Date.now().toString().slice(-4)}`;
+
+    const newStudent: Student = {
+      id: studentIdToUse,
+      fullName: newStudentName.trim(),
+      classId: selectedClassId,
+      academicYearId: currentYearId,
+      status: 'active',
+      roomNumber: newStudentRoom.trim() || undefined,
+      parentPhone: newStudentPhone.trim() || undefined,
+    };
+
+    const res = storage.saveStudent(newStudent, currentUser.id, currentUser.name);
+    if (!res.success) {
+      setAddStudentError(res.message || 'Қате орын алды');
+      return;
+    }
+
+    reloadClassStudents();
+    setShowAddStudentModal(false);
+    setStudentNotice(`Оқушы «${newStudent.fullName}» сәтті тіркелді!`);
+    setTimeout(() => setStudentNotice(null), 3000);
+  };
+
+  const handleDeleteStudent = (studentId: string, name: string) => {
+    if (confirm(`«${name}» оқушысын осы сыныптан өшіруді растайсыз ба?`)) {
+      storage.deleteStudent(studentId, currentUser.id, currentUser.name);
+      reloadClassStudents();
+      setStudentNotice(`Оқушы «${name}» өшірілді.`);
+      setTimeout(() => setStudentNotice(null), 3000);
+    }
+  };
+
+  // Filter students for search in student tab
+  const filteredStudents = students.filter(
+    (s) =>
+      s.fullName.toLowerCase().includes(studentSearch.toLowerCase()) ||
+      s.id.toLowerCase().includes(studentSearch.toLowerCase()) ||
+      (s.roomNumber && s.roomNumber.includes(studentSearch))
+  );
+
   return (
     <div className="space-y-6">
       {/* Top Banner & Class Selector */}
@@ -375,8 +463,55 @@ export const EducatorDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Submission Success Alert */}
-      {submissionSuccess && (
+      {/* Module Mode Switcher Tabs */}
+      <div className="flex border-b border-gray-200 gap-2">
+        <button
+          onClick={() => setActiveEducatorTab('study_session')}
+          className={`pb-3 px-4 font-bold text-sm flex items-center gap-2 border-b-2 transition ${
+            activeEducatorTab === 'study_session'
+              ? 'border-[#075C42] text-[#075C42]'
+              : 'border-transparent text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          <Moon className="w-4 h-4" />
+          <span>Кешкі дайындық бақылауы (19:00 - 21:00)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveEducatorTab('my_students')}
+          className={`pb-3 px-4 font-bold text-sm flex items-center gap-2 border-b-2 transition ${
+            activeEducatorTab === 'my_students'
+              ? 'border-[#075C42] text-[#075C42]'
+              : 'border-transparent text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Сынып оқушылары</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-extrabold ${
+            students.length >= MAX_STUDENTS_PER_CLASS
+              ? 'bg-rose-100 text-rose-700'
+              : 'bg-[#E6F4EA] text-[#075C42]'
+          }`}>
+            {students.length} / {MAX_STUDENTS_PER_CLASS}
+          </span>
+        </button>
+      </div>
+
+      {studentNotice && (
+        <div className="p-3.5 rounded-2xl bg-[#E6F4EA] border border-[#138A62]/30 flex items-center justify-between text-xs font-bold text-[#075C42] animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-[#138A62]" />
+            <span>{studentNotice}</span>
+          </div>
+          <button onClick={() => setStudentNotice(null)} className="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+      )}
+
+      {/* TAB 1: STUDY SESSION MONITORING */}
+      {activeEducatorTab === 'study_session' && (
+        <div className="space-y-6">
+          {/* Submission Success Alert */}
+          {submissionSuccess && (
         <div className="p-4 rounded-2xl bg-[#E6F4EA] border border-[#138A62]/30 flex items-center justify-between animate-in fade-in">
           <div className="flex items-center gap-3">
             <ShieldCheck className="w-6 h-6 text-[#075C42]" />
@@ -774,6 +909,301 @@ export const EducatorDashboard: React.FC = () => {
               <span>{t.completeMonitoringBtn}</span>
             </button>
           </div>
+        </div>
+      )}
+    </div>
+  )}
+
+      {/* TAB 2: MY CLASS STUDENTS MANAGEMENT WITH 26-STUDENT LIMIT */}
+      {activeEducatorTab === 'my_students' && (
+        <div className="space-y-6">
+          {/* Capacity and Class Summary Card */}
+          <div className="bg-white rounded-3xl p-6 shadow-xs border border-gray-100">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-bold text-[#138A62] uppercase tracking-wider">
+                  Тәрбиеленушілер құрамы • {classes.find((c) => c.id === selectedClassId)?.name || 'Сынып'}
+                </span>
+                <h3 className="text-xl font-extrabold text-[#24342D] mt-1">
+                  Сынып оқушыларын басқару және тіркеу
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  Бекітілген сынып бойынша оқушыларды қабылдау. Сыныптағы ең жоғарғы сыйымдылық шегі — <span className="font-bold text-[#075C42]">{MAX_STUDENTS_PER_CLASS} оқушы</span>.
+                </p>
+              </div>
+
+              <button
+                onClick={handleOpenAddStudent}
+                disabled={students.length >= MAX_STUDENTS_PER_CLASS}
+                className={`px-5 py-3 rounded-2xl text-xs font-extrabold transition flex items-center gap-2 shadow-sm ${
+                  students.length >= MAX_STUDENTS_PER_CLASS
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-[#075C42] text-white hover:bg-[#054531]'
+                }`}
+              >
+                <Plus className="w-4 h-4 text-[#FFE9A8]" />
+                <span>Жаңа оқушы қосу</span>
+              </button>
+            </div>
+
+            {/* Capacity Progress Bar & Metrics */}
+            <div className="mt-6 pt-6 border-t border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+              <div className="md:col-span-2">
+                <div className="flex items-center justify-between text-xs mb-2">
+                  <span className="font-bold text-gray-600">Сыныптың толу деңгейі:</span>
+                  <span className={`font-extrabold ${
+                    students.length >= MAX_STUDENTS_PER_CLASS
+                      ? 'text-rose-600'
+                      : students.length >= 24
+                      ? 'text-amber-600'
+                      : 'text-[#138A62]'
+                  }`}>
+                    {students.length} / {MAX_STUDENTS_PER_CLASS} оқушы ({Math.round((students.length / MAX_STUDENTS_PER_CLASS) * 100)}%)
+                  </span>
+                </div>
+                <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      students.length >= MAX_STUDENTS_PER_CLASS
+                        ? 'bg-rose-500'
+                        : students.length >= 24
+                        ? 'bg-amber-400'
+                        : 'bg-[#138A62]'
+                    }`}
+                    style={{ width: `${Math.min(100, (students.length / MAX_STUDENTS_PER_CLASS) * 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-[#F8FAF9] border border-gray-100">
+                <span className="text-[11px] font-bold text-gray-400 block">Бос орындар</span>
+                <span className="text-xl font-extrabold text-[#24342D]">
+                  {Math.max(0, MAX_STUDENTS_PER_CLASS - students.length)} орын
+                </span>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-[#E6F4EA] border border-[#138A62]/20">
+                <span className="text-[11px] font-bold text-[#075C42] block">Бекітілген тәрбиеші</span>
+                <span className="text-xs font-bold text-[#075C42] truncate block mt-1">
+                  {currentUser.name}
+                </span>
+              </div>
+            </div>
+
+            {/* Strict capacity notice if class is full */}
+            {students.length >= MAX_STUDENTS_PER_CLASS && (
+              <div className="mt-4 p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-center gap-3 text-xs text-rose-800 font-bold">
+                <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0" />
+                <span>
+                  Сынып максималды {MAX_STUDENTS_PER_CLASS} оқушы шегіне жетті (100% толық). Жаңа оқушы қосу бұғатталған. Басқа оқушы қосу үшін бұрынғы оқушыны өшіру немесе ауыстыру қажет.
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Search & Student List */}
+          <div className="bg-white rounded-3xl p-6 shadow-xs border border-gray-100 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Оқушы аты-жөні, коды немесе бөлмесі..."
+                  value={studentSearch}
+                  onChange={(e) => setStudentSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl text-xs font-semibold bg-[#F8FAF9] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62]"
+                />
+              </div>
+
+              <span className="text-xs font-bold text-gray-500">
+                Көрсетілуде: {filteredStudents.length} / {students.length} оқушы
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-[#F8FAF9]">
+                    <th className="py-3 px-3 font-extrabold text-[#24342D] w-12 text-center">№</th>
+                    <th className="py-3 px-3 font-extrabold text-[#24342D]">Оқушының аты-жөні</th>
+                    <th className="py-3 px-3 font-extrabold text-[#24342D]">Жүйелік ID / Код</th>
+                    <th className="py-3 px-3 font-extrabold text-[#24342D]">Жатақхана бөлмесі</th>
+                    <th className="py-3 px-3 font-extrabold text-[#24342D]">Ата-ана телефоны</th>
+                    <th className="py-3 px-3 font-extrabold text-[#24342D] text-center">Күйі</th>
+                    <th className="py-3 px-3 font-extrabold text-[#24342D] text-right">Әрекет</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredStudents.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-gray-400 text-xs">
+                        Оқушылар табылмады
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredStudents.map((st, idx) => (
+                      <tr key={st.id} className="hover:bg-[#F8FAF9] transition">
+                        <td className="py-3.5 px-3 text-center font-bold text-gray-400">{idx + 1}</td>
+                        <td className="py-3.5 px-3">
+                          <button
+                            onClick={() => setInspectedStudent(st)}
+                            className="font-extrabold text-[#24342D] hover:text-[#138A62] text-left transition"
+                          >
+                            {st.fullName}
+                          </button>
+                        </td>
+                        <td className="py-3.5 px-3 font-mono text-[11px] text-gray-500">{st.id}</td>
+                        <td className="py-3.5 px-3">
+                          <span className="px-2 py-0.5 rounded-lg bg-gray-100 font-bold text-[#24342D]">
+                            № {st.roomNumber || '—'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3 text-gray-600 font-mono text-[11px]">
+                          {st.parentPhone || '—'}
+                        </td>
+                        <td className="py-3.5 px-3 text-center">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-[#E6F4EA] text-[#075C42]">
+                            Белсенді
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => setInspectedStudent(st)}
+                              className="px-2.5 py-1.5 rounded-xl border border-gray-200 text-[11px] font-bold text-gray-700 hover:bg-gray-100 transition"
+                              title="Оқушы карточкасы және үлгерімі"
+                            >
+                              Карточка
+                            </button>
+                            <button
+                              onClick={() => handleDeleteStudent(st.id, st.fullName)}
+                              className="p-1.5 rounded-xl text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                              title="Сыныптан өшіру"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Add Student Modal */}
+          {showAddStudentModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+              <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-gray-100 text-left">
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-[#E6F4EA] flex items-center justify-center text-[#075C42]">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-base text-[#24342D]">
+                        Жаңа оқушы тіркеу
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        {classes.find((c) => c.id === selectedClassId)?.name} сыныбына оқушы қосу
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowAddStudentModal(false)}
+                    className="p-1.5 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <form onSubmit={handleAddStudentSubmit} className="mt-4 space-y-4">
+                  {addStudentError && (
+                    <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{addStudentError}</span>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      Оқушының аты-жөні <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Мысалы: Бекетов Дамир Қайратұлы"
+                      value={newStudentName}
+                      onChange={(e) => setNewStudentName(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-[#F8FAF9] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">
+                        Жүйелік ID / Код
+                      </label>
+                      <input
+                        type="text"
+                        value={newStudentId}
+                        onChange={(e) => setNewStudentId(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl text-xs font-mono bg-[#F8FAF9] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">
+                        Жатақхана бөлмесі
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Мысалы: 204"
+                        value={newStudentRoom}
+                        onChange={(e) => setNewStudentRoom(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-[#F8FAF9] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      Ата-ана телефоны
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="+7 (701) 000-00-00"
+                      value={newStudentPhone}
+                      onChange={(e) => setNewStudentPhone(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-[#F8FAF9] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62]"
+                    />
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-[#FFF8E7] border border-[#FFE9A8] text-[11px] text-amber-900">
+                    <span className="font-bold">Ескерту:</span> Сынып шегі 26 оқушы. Қазір бұл сыныпта {students.length} оқушы тіркелген.
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddStudentModal(false)}
+                      className="px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-100"
+                    >
+                      Болдырмау
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 rounded-xl bg-[#075C42] text-white text-xs font-extrabold hover:bg-[#054531] shadow-sm flex items-center gap-1.5"
+                    >
+                      <Plus className="w-4 h-4 text-[#FFE9A8]" />
+                      <span>Сақтау және тіркеу</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

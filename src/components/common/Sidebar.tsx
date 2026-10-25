@@ -69,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
     { id: 'dormitory', label: t.nav.dormitory, icon: Building2, roles: ['ADMINISTRATOR', 'EDUCATOR', 'CAFETERIA_STAFF'] },
     { id: 'students', label: t.nav.students, icon: Users, roles: ['ADMINISTRATOR', 'CLASS_TEACHER'] },
     { id: 'classes', label: t.nav.classes, icon: Layers, roles: ['ADMINISTRATOR'] },
-    { id: 'timetables', label: t.nav.timetables, icon: CalendarDays, roles: ['ADMINISTRATOR'] },
+    { id: 'timetables', label: t.nav.timetables, icon: CalendarDays, roles: ['ADMINISTRATOR', 'CLASS_TEACHER'] },
     { id: 'educator_performance', label: t.nav.performance, icon: Activity, roles: ['ADMINISTRATOR'] },
     { id: 'analytics', label: t.nav.analytics, icon: BarChart3, roles: ['ADMINISTRATOR', 'CLASS_TEACHER'] },
     { id: 'quarterly_reports', label: t.nav.quarterlyReports, icon: FileSpreadsheet, roles: ['ADMINISTRATOR', 'CLASS_TEACHER'] },

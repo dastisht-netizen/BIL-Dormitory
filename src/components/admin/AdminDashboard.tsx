@@ -27,7 +27,13 @@ import {
   Phone,
   Mail,
   MapPin,
-  Lock
+  Lock,
+  Copy,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Sparkles,
+  Check
 } from 'lucide-react';
 import { NotificationSettings, Role, SchoolClass, Subject, User, SiteConfig } from '../../types';
 import { storage } from '../../db/storage';
@@ -69,15 +75,71 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
   const [showUserModal, setShowUserModal] = useState(false);
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserIin, setNewUserIin] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserPhone, setNewUserPhone] = useState('');
   const [newUserRole, setNewUserRole] = useState<Role>('EDUCATOR');
+  const [newAssignedClass, setNewAssignedClass] = useState('cls-7a');
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   // Admin Profile state
   const [adminName, setAdminName] = useState(currentUser.name);
   const [adminEmail, setAdminEmail] = useState(currentUser.email);
   const [adminPhone, setAdminPhone] = useState(currentUser.phone || '');
   const [adminPassword, setAdminPassword] = useState(currentUser.password || 'admin123');
+
+  // Helper to generate secure password like BIL#8492
+  const generateSecurePassword = () => {
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const pass = `BIL#${randomNum}`;
+    setNewUserPassword(pass);
+    return pass;
+  };
+
+  // Helper to generate valid-looking 12-digit IIN
+  const generateSampleIin = () => {
+    const year = Math.floor(80 + Math.random() * 20);
+    const month = String(Math.floor(1 + Math.random() * 12)).padStart(2, '0');
+    const day = String(Math.floor(1 + Math.random() * 28)).padStart(2, '0');
+    const gender = Math.random() > 0.5 ? '3' : '4';
+    const rest = String(Math.floor(10000 + Math.random() * 90000));
+    const sampleIin = `${year}${month}${day}${gender}${rest}`.substring(0, 12);
+    setNewUserIin(sampleIin);
+    return sampleIin;
+  };
+
+  const copyToClipboard = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const togglePasswordVisibility = (userId: string) => {
+    setVisiblePasswords((prev) => ({ ...prev, [userId]: !prev[userId] }));
+  };
+
+  const resetStaffPassword = (userId: string, userName: string) => {
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const newPass = `BIL#${randomNum}`;
+    const user = users.find((u) => u.id === userId);
+    if (!user) return;
+
+    const updatedUser: User = { ...user, password: newPass };
+    storage.saveUser(updatedUser, currentUser.id, currentUser.name);
+    loadData();
+    showNotification(`«${userName}» қызметкеріне жаңа құпиясөз берілді: ${newPass}`);
+  };
+
+  const handleOpenUserModal = () => {
+    setNewUserName('');
+    setNewUserPhone('');
+    setNewUserRole('EDUCATOR');
+    setNewAssignedClass('cls-7a');
+    generateSampleIin();
+    generateSecurePassword();
+    setShowUserModal(true);
+  };
 
   const loadData = () => {
     setClasses(storage.getClasses());
@@ -173,23 +235,45 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
   // 4. User Handlers
   const handleSaveUser = (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanIin = newUserIin.trim();
+
+    if (!/^\d{12}$/.test(cleanIin)) {
+      alert('Қызметкердің ИИН-і дәл 12 цифрдан тұруы тиіс!');
+      return;
+    }
+
+    const generatedPass = newUserPassword.trim() || generateSecurePassword();
+    const userId = `user-${Date.now()}`;
+
     const newUser: User = {
-      id: `user-${Date.now()}`,
+      id: userId,
       name: newUserName.trim(),
-      email: newUserEmail.trim(),
-      password: newUserPassword.trim() || 'bil123',
+      iin: cleanIin,
+      email: newUserEmail.trim() || `${cleanIin}@bil-arys.edu.kz`,
+      password: generatedPass,
       phone: newUserPhone.trim() || undefined,
       role: newUserRole,
+      assignedClassIds: newAssignedClass ? [newAssignedClass] : [],
     };
 
     storage.saveUser(newUser, currentUser.id, currentUser.name);
+
+    // If an assigned class is selected, link it in the class record as well
+    if (newAssignedClass) {
+      const cls = classes.find((c) => c.id === newAssignedClass);
+      if (cls) {
+        const updatedCls: SchoolClass = {
+          ...cls,
+          educatorId: newUserRole === 'EDUCATOR' ? userId : cls.educatorId,
+          classTeacherId: newUserRole === 'CLASS_TEACHER' ? userId : cls.classTeacherId,
+        };
+        storage.saveClass(updatedCls, currentUser.id, currentUser.name);
+      }
+    }
+
     loadData();
     setShowUserModal(false);
-    setNewUserName('');
-    setNewUserEmail('');
-    setNewUserPassword('');
-    setNewUserPhone('');
-    showNotification(`Қолданушы ${newUser.name} тіркелді! Құпиясөз: ${newUser.password}`);
+    showNotification(`Қызметкер «${newUser.name}» сәтті тіркелді! Логин (ИИН): ${cleanIin} | Құпиясөз: ${generatedPass}`);
   };
 
   const handleDeleteUser = (userId: string, name: string) => {
@@ -728,51 +812,186 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
       {/* TAB 5: STAFF & LOGINS */}
       {activeAdminTab === 'staff' && (
         <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-xs border border-gray-100 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
             <div>
-              <h3 className="font-extrabold text-base text-[#24342D]">
-                Қызметкерлер мен логиндер ({users.length})
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#EEF2FF] text-[#4338CA]">
+                  Жатақхана меңгерушісінің айрықша құқығы
+                </span>
+                <span className="text-xs text-gray-400 font-bold">({users.length} қызметкер)</span>
+              </div>
+              <h3 className="font-extrabold text-base sm:text-lg text-[#0F172A] mt-1">
+                Қызметкерлер тізімі және автоматты есептік жазбалар
               </h3>
-              <p className="text-xs text-gray-400">
-                Тәрбиешілер, сынып жетекшілері және асхана қызметкерлерінің есептік жазбалары
+              <p className="text-xs text-gray-500 mt-0.5">
+                Кіру логині — қызметкердің 12-таңбалы ИИН-і. Құпиясөз автоматты түрде (BIL#XXXX) жасалады.
               </p>
             </div>
             <button
-              onClick={() => setShowUserModal(true)}
-              className="px-3.5 py-2 rounded-xl bg-[#075C42] text-white text-xs font-bold hover:bg-[#054531] flex items-center gap-1.5"
+              onClick={handleOpenUserModal}
+              className="px-4 py-2.5 rounded-xl bg-[#4338CA] hover:bg-[#3730A3] text-white text-xs font-extrabold shadow-md transition flex items-center gap-2 shrink-0 cursor-pointer"
             >
               <Plus className="w-4 h-4 text-[#FFE9A8]" />
-              <span>Қызметкер қосу</span>
+              <span>Жаңа қызметкер тіркеу</span>
             </button>
           </div>
 
-          <div className="divide-y divide-gray-100">
-            {users.map((u) => (
-              <div key={u.id} className="py-3.5 flex items-center justify-between text-xs">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-[#24342D]">{u.name}</span>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-bold text-[10px]">
-                      {t.roles[u.role] || u.role}
-                    </span>
-                  </div>
-                  <span className="text-gray-500 text-[11px] block mt-0.5">
-                    Логин / Email: <strong className="font-mono">{u.email}</strong> • Құпиясөз: <strong className="font-mono">{u.password || 'admin123'}</strong>
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {u.id !== currentUser.id && (
-                    <button
-                      onClick={() => handleDeleteUser(u.id, u.name)}
-                      className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg"
-                      title="Өшіру"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+          {/* Dedicated Staff Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-[#F8FAFC] border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                  <th className="py-3 px-3">Қызметкер</th>
+                  <th className="py-3 px-3">Рөлі</th>
+                  <th className="py-3 px-3">Бекітілген сынып</th>
+                  <th className="py-3 px-3">Логин (12-таңбалы ИИН)</th>
+                  <th className="py-3 px-3">Уақытша құпиясөз</th>
+                  <th className="py-3 px-3">Байланыс</th>
+                  <th className="py-3 px-3 text-right">Әрекеттер</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {users.map((u) => {
+                  const assignedClassNames = (u.assignedClassIds || [])
+                    .map((cid) => classes.find((c) => c.id === cid)?.name)
+                    .filter(Boolean)
+                    .join(', ');
+
+                  const isPassVisible = visiblePasswords[u.id];
+                  const userPassword = u.password || 'BIL#8492';
+                  const userIin = u.iin || (u.email.includes('@') ? u.email.split('@')[0] : '850412301492');
+
+                  return (
+                    <tr key={u.id} className="hover:bg-slate-50/80 transition">
+                      {/* Name */}
+                      <td className="py-3.5 px-3">
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                              u.role === 'ADMINISTRATOR'
+                                ? 'bg-amber-500 text-slate-950'
+                                : u.role === 'EDUCATOR'
+                                ? 'bg-emerald-600 text-white'
+                                : u.role === 'CLASS_TEACHER'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-purple-600 text-white'
+                            }`}
+                          >
+                            {u.name.charAt(0)}
+                          </div>
+                          <div>
+                            <span className="font-bold text-[#0F172A] block">{u.name}</span>
+                            <span className="text-[10px] text-gray-400 font-mono">{u.email}</span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Role badge */}
+                      <td className="py-3.5 px-3">
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold ${
+                            u.role === 'ADMINISTRATOR'
+                              ? 'bg-amber-100 text-amber-900'
+                              : u.role === 'EDUCATOR'
+                              ? 'bg-emerald-100 text-emerald-900'
+                              : u.role === 'CLASS_TEACHER'
+                              ? 'bg-blue-100 text-blue-900'
+                              : 'bg-purple-100 text-purple-900'
+                          }`}
+                        >
+                          {t.roles[u.role] || u.role}
+                        </span>
+                      </td>
+
+                      {/* Assigned Class */}
+                      <td className="py-3.5 px-3">
+                        {assignedClassNames ? (
+                          <span className="px-2 py-0.5 rounded-md bg-[#EEF2FF] text-[#4338CA] font-black text-[11px] border border-indigo-100">
+                            {assignedClassNames} сыныбы
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 text-[11px]">— БАРЛЫҒЫ</span>
+                        )}
+                      </td>
+
+                      {/* 12-digit IIN Login */}
+                      <td className="py-3.5 px-3">
+                        <div className="flex items-center gap-1.5">
+                          <code className="px-2 py-1 rounded-lg bg-slate-100 font-mono font-bold text-slate-800 text-xs tracking-wider">
+                            {userIin}
+                          </code>
+                          <button
+                            onClick={() => copyToClipboard(userIin, `iin-${u.id}`)}
+                            className="p-1 text-slate-400 hover:text-indigo-600 rounded transition"
+                            title="ИИН көшіріп алу"
+                          >
+                            {copiedKey === `iin-${u.id}` ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Generated Password */}
+                      <td className="py-3.5 px-3">
+                        <div className="flex items-center gap-1.5">
+                          <div className="px-2 py-1 rounded-lg bg-indigo-50/70 border border-indigo-100 font-mono font-bold text-indigo-900 text-xs flex items-center gap-1">
+                            <span>{isPassVisible ? userPassword : '••••••••'}</span>
+                          </div>
+                          <button
+                            onClick={() => togglePasswordVisibility(u.id)}
+                            className="p-1 text-slate-400 hover:text-slate-600 rounded transition"
+                            title={isPassVisible ? 'Жасыру' : 'Көрсету'}
+                          >
+                            {isPassVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                          <button
+                            onClick={() => copyToClipboard(userPassword, `pass-${u.id}`)}
+                            className="p-1 text-slate-400 hover:text-indigo-600 rounded transition"
+                            title="Құпиясөзді көшіріп алу"
+                          >
+                            {copiedKey === `pass-${u.id}` ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Phone */}
+                      <td className="py-3.5 px-3 font-mono text-[11px] text-gray-600">
+                        {u.phone || '—'}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3.5 px-3 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => resetStaffPassword(u.id, u.name)}
+                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                            title="Жаңа BIL# құпиясөз жасау"
+                          >
+                            <KeyRound className="w-4 h-4" />
+                          </button>
+                          {u.id !== currentUser.id && (
+                            <button
+                              onClick={() => handleDeleteUser(u.id, u.name)}
+                              className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
+                              title="Өшіру"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -1157,82 +1376,192 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
 
       {/* User Modal */}
       {showUserModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-gray-100 text-left">
-            <h3 className="font-extrabold text-lg text-[#24342D] pb-3 border-b border-gray-100">
-              Қызметкерді тіркеу
-            </h3>
-            <form onSubmit={handleSaveUser} className="mt-4 space-y-3.5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="w-full max-w-lg bg-white rounded-3xl p-6 shadow-2xl border border-gray-100 text-left text-slate-900 max-h-[92vh] overflow-y-auto">
+            <div className="pb-3 border-b border-gray-100 flex items-center justify-between">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Аты-жөні</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#EEF2FF] text-[#4338CA]">
+                    Жатақхана меңгерушісі
+                  </span>
+                </div>
+                <h3 className="font-extrabold text-lg text-[#0F172A] mt-1">
+                  Жаңа қызметкерді тіркеу
+                </h3>
+                <p className="text-xs text-gray-400">
+                  Тәрбиеші немесе сынып жетекшісіне ИИН логинін беру және автоматты құпиясөз генерациялау
+                </p>
+              </div>
+              <button
+                onClick={() => setShowUserModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUser} className="mt-4 space-y-3.5">
+              {/* Full Name */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Қызметкердің аты-жөні <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
                   value={newUserName}
                   onChange={(e) => setNewUserName(e.target.value)}
                   placeholder="Мысалы, Серік Болатұлы"
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62]"
+                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#4338CA] font-semibold"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Email / Логин</label>
-                <input
-                  type="email"
-                  required
-                  value={newUserEmail}
-                  onChange={(e) => setNewUserEmail(e.target.value)}
-                  placeholder="serik.b@bil-arys.edu.kz"
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62]"
-                />
+
+              {/* Role & Assigned Class */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Рөлі <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={newUserRole}
+                    onChange={(e) => setNewUserRole(e.target.value as Role)}
+                    className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#4338CA]"
+                  >
+                    <option value="EDUCATOR">Тәрбиеші (Educator)</option>
+                    <option value="CLASS_TEACHER">Сынып жетекшісі (Class Teacher)</option>
+                    <option value="CAFETERIA_STAFF">Асхана қызметкері (Cafeteria)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Бекітілетін сынып <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={newAssignedClass}
+                    onChange={(e) => setNewAssignedClass(e.target.value)}
+                    className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#4338CA]"
+                  >
+                    {classes.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} сыныбы ({c.grade}-сынып)
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Құпиясөз (Password)</label>
-                <input
-                  type="text"
-                  required
-                  value={newUserPassword}
-                  onChange={(e) => setNewUserPassword(e.target.value)}
-                  placeholder="bil123"
-                  className="w-full px-3 py-2 text-sm font-mono rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62]"
-                />
+
+              {/* 12-digit IIN (Login) */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-extrabold text-[#0F172A]">
+                    Жүйеге кіру логині (12-таңбалы ИИН) <span className="text-rose-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={generateSampleIin}
+                    className="text-[11px] font-bold text-[#4338CA] hover:underline flex items-center gap-1"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Кездейсоқ ИИН жасау</span>
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    maxLength={12}
+                    value={newUserIin}
+                    onChange={(e) => setNewUserIin(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                    placeholder="12 таңбалы ИИН (мысалы, 940512301824)"
+                    className="w-full px-3.5 py-2 text-sm font-mono tracking-widest font-bold rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#4338CA] bg-white"
+                  />
+                  <span className="absolute right-3 top-2.5 text-[11px] font-mono text-gray-400">
+                    {newUserIin.length}/12
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-500">
+                  Қызметкер жүйеге кіру үшін өзінің осы 12 таңбалы ИИН нөмірін қолданады.
+                </p>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Телефон байланысы</label>
-                <input
-                  type="text"
-                  value={newUserPhone}
-                  onChange={(e) => setNewUserPhone(e.target.value)}
-                  placeholder="+7 701 000 0000"
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62]"
-                />
+
+              {/* Automated Password Generation */}
+              <div className="p-3.5 rounded-2xl bg-[#EEF2FF]/60 border border-indigo-100 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-extrabold text-[#0F172A]">
+                    Уақытша құпиясөз (Password) <span className="text-rose-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={generateSecurePassword}
+                    className="px-2.5 py-1 rounded-lg bg-[#4338CA] text-white text-[11px] font-extrabold hover:bg-[#3730A3] transition flex items-center gap-1 shadow-2xs"
+                  >
+                    <KeyRound className="w-3.5 h-3.5 text-[#FFE9A8]" />
+                    <span>Құпиясөз жасау (Generate)</span>
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    required
+                    value={newUserPassword}
+                    onChange={(e) => setNewUserPassword(e.target.value)}
+                    placeholder="BIL#8492"
+                    className="w-full px-3.5 py-2 text-sm font-mono font-black text-indigo-950 rounded-xl border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-[#4338CA] bg-white tracking-wider"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(newUserPassword, 'modal-pass')}
+                    className="px-3 py-2 rounded-xl bg-white border border-indigo-200 hover:bg-indigo-50 text-indigo-800 text-xs font-bold transition flex items-center gap-1 shrink-0"
+                    title="Көшіріп алу"
+                  >
+                    {copiedKey === 'modal-pass' ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                    <span>Көшіру</span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-indigo-900/80">
+                  Жүйе сенімді уақытша құпиясөз жасайды. Қызметкер алғашқы рет кіргенде өзі өзгерте алады.
+                </p>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Рөлі</label>
-                <select
-                  value={newUserRole}
-                  onChange={(e) => setNewUserRole(e.target.value as Role)}
-                  className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62]"
-                >
-                  <option value="EDUCATOR">Тәрбиеші (Educator)</option>
-                  <option value="CLASS_TEACHER">Сынып жетекшісі (Class Teacher)</option>
-                  <option value="CAFETERIA_STAFF">Асхана қызметкері (Cafeteria)</option>
-                  <option value="ADMINISTRATOR">Әкімші (Administrator)</option>
-                </select>
+
+              {/* Contact Phone & Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Телефон байланысы</label>
+                  <input
+                    type="text"
+                    value={newUserPhone}
+                    onChange={(e) => setNewUserPhone(e.target.value)}
+                    placeholder="+7 701 000 0000"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#4338CA]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Email (Қосымша)</label>
+                  <input
+                    type="email"
+                    value={newUserEmail}
+                    onChange={(e) => setNewUserEmail(e.target.value)}
+                    placeholder={`${newUserIin || 'iin'}@bil-arys.edu.kz`}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#4338CA]"
+                  />
+                </div>
               </div>
 
               <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowUserModal(false)}
-                  className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-100"
+                  className="px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-100 transition"
                 >
                   Болдырмау
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 rounded-xl bg-[#075C42] text-white text-xs font-bold hover:bg-[#054531] shadow-sm"
+                  className="px-6 py-2.5 rounded-xl bg-[#4338CA] hover:bg-[#3730A3] text-white text-xs font-extrabold shadow-md transition flex items-center gap-1.5 cursor-pointer"
                 >
-                  Қосу
+                  <Check className="w-4 h-4 text-[#FFE9A8]" />
+                  <span>Қызметкерді сақтау</span>
                 </button>
               </div>
             </form>

@@ -10,6 +10,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  iin?: string; // 12-digit IIN login (ИИН)
   password?: string;
   role: Role;
   assignedClassIds?: string[]; // Classes this user is responsible for

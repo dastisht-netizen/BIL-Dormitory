@@ -92,12 +92,15 @@ export const INITIAL_YEARS: AcademicYear[] = [
   },
 ];
 
+export const MAX_STUDENTS_PER_CLASS = 26;
+
 // Initial Users
 export const INITIAL_USERS: User[] = [
   {
     id: 'user-admin',
     name: 'Нұрлан Сейітқалиұлы',
     email: 'admin@bil-arys.edu.kz',
+    iin: '850412301492',
     password: 'admin123',
     role: 'ADMINISTRATOR',
     phone: '+7 701 555 0101',
@@ -106,7 +109,8 @@ export const INITIAL_USERS: User[] = [
     id: 'user-edu-1',
     name: 'Ерлан Бақытұлы',
     email: 'erlan.b@bil-arys.edu.kz',
-    password: 'edu123',
+    iin: '920615301842',
+    password: 'BIL#8492',
     role: 'EDUCATOR',
     assignedClassIds: ['cls-7a', 'cls-7b'],
     phone: '+7 702 333 4455',
@@ -115,16 +119,28 @@ export const INITIAL_USERS: User[] = [
     id: 'user-edu-2',
     name: 'Дәулет Мұратұлы',
     email: 'daulet.m@bil-arys.edu.kz',
-    password: 'edu123',
+    iin: '940321302715',
+    password: 'BIL#3915',
     role: 'EDUCATOR',
     assignedClassIds: ['cls-8a', 'cls-8b'],
     phone: '+7 705 444 6677',
   },
   {
+    id: 'user-edu-3',
+    name: 'Бауыржан Серікұлы',
+    email: 'bauyrzhan.s@bil-arys.edu.kz',
+    iin: '950811303628',
+    password: 'BIL#5178',
+    role: 'EDUCATOR',
+    assignedClassIds: ['cls-9a'],
+    phone: '+7 701 444 8899',
+  },
+  {
     id: 'user-teacher-7a',
     name: 'Айнұр Серікқызы',
     email: 'ainur.s@bil-arys.edu.kz',
-    password: 'teacher123',
+    iin: '881104401923',
+    password: 'BIL#7241',
     role: 'CLASS_TEACHER',
     assignedClassIds: ['cls-7a'],
     phone: '+7 707 888 9900',
@@ -133,16 +149,28 @@ export const INITIAL_USERS: User[] = [
     id: 'user-teacher-8a',
     name: 'Гүлнәр Асқарқызы',
     email: 'gulnar.a@bil-arys.edu.kz',
-    password: 'teacher123',
+    iin: '890218402834',
+    password: 'BIL#6382',
     role: 'CLASS_TEACHER',
     assignedClassIds: ['cls-8a'],
     phone: '+7 775 111 2233',
   },
   {
+    id: 'user-teacher-9a',
+    name: 'Мәдина Қанатқызы',
+    email: 'madina.q@bil-arys.edu.kz',
+    iin: '910729403745',
+    password: 'BIL#4926',
+    role: 'CLASS_TEACHER',
+    assignedClassIds: ['cls-9a'],
+    phone: '+7 777 555 1122',
+  },
+  {
     id: 'user-cafeteria',
     name: 'Баян Әбдікерімқызы',
     email: 'cafeteria@bil-arys.edu.kz',
-    password: 'cafe123',
+    iin: '830516401056',
+    password: 'BIL#9182',
     role: 'CAFETERIA_STAFF',
     phone: '+7 778 999 0011',
   },
@@ -154,7 +182,7 @@ export const INITIAL_CLASSES: SchoolClass[] = [
   { id: 'cls-7b', name: '7B', grade: 7, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-1' },
   { id: 'cls-8a', name: '8A', grade: 8, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-2', classTeacherId: 'user-teacher-8a' },
   { id: 'cls-8b', name: '8B', grade: 8, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-2' },
-  { id: 'cls-9a', name: '9A', grade: 9, academicYearId: 'ay-2026-2027' },
+  { id: 'cls-9a', name: '9A', grade: 9, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-3', classTeacherId: 'user-teacher-9a' },
   { id: 'cls-10a', name: '10A', grade: 10, academicYearId: 'ay-2026-2027' },
   { id: 'cls-11a', name: '11A', grade: 11, academicYearId: 'ay-2026-2027' },
 ];
@@ -699,9 +727,25 @@ class StorageService {
     return this.getItem(STORAGE_KEYS.STUDENTS, INITIAL_STUDENTS);
   }
 
-  public saveStudent(student: Student, userId: string, userName: string): void {
+  public getClassStudentCount(classId: string): number {
+    return this.getStudents().filter((s) => s.classId === classId && s.status === 'active').length;
+  }
+
+  public saveStudent(student: Student, userId: string, userName: string): { success: boolean; message?: string } {
     const students = this.getStudents();
     const idx = students.findIndex((s) => s.id === student.id);
+
+    // Enforce strict 26-student limit per class for active students
+    const existingInClass = students.filter(
+      (s) => s.classId === student.classId && s.status === 'active' && s.id !== student.id
+    );
+    if (student.status === 'active' && existingInClass.length >= MAX_STUDENTS_PER_CLASS) {
+      return {
+        success: false,
+        message: `Сыныптағы максималды шек — ${MAX_STUDENTS_PER_CLASS} оқушы. Қазір сыныпта ${existingInClass.length} оқушы тіркелген. Жаңа оқушы қосу мүмкін емес!`,
+      };
+    }
+
     if (idx >= 0) {
       students[idx] = student;
     } else {
@@ -719,6 +763,7 @@ class StorageService {
       newValue: `${student.fullName} (${student.id})`,
       timestamp: new Date().toISOString(),
     });
+    return { success: true };
   }
 
   public deleteStudent(studentId: string, userId: string, userName: string): void {

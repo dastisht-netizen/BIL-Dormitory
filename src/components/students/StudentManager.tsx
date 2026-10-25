@@ -50,8 +50,11 @@ export const StudentManager: React.FC = () => {
     loadData();
   }, []);
 
+  const [addError, setAddError] = useState<string | null>(null);
+
   const handleAddStudent = (e: React.FormEvent) => {
     e.preventDefault();
+    setAddError(null);
     const idToUse = newId.trim() || `BIL-2026-${Math.floor(100 + Math.random() * 900)}`;
 
     const newStudent: Student = {
@@ -64,7 +67,12 @@ export const StudentManager: React.FC = () => {
       parentPhone: newPhone.trim() || undefined,
     };
 
-    storage.saveStudent(newStudent, currentUser.id, currentUser.name);
+    const res = storage.saveStudent(newStudent, currentUser.id, currentUser.name);
+    if (!res.success) {
+      setAddError(res.message || 'Сыныпқа оқушы қосу мүмкін емес!');
+      return;
+    }
+
     loadData();
     setShowAddModal(false);
     setNewId('');
@@ -330,6 +338,11 @@ export const StudentManager: React.FC = () => {
             </h3>
 
             <form onSubmit={handleAddStudent} className="mt-4 space-y-3.5">
+              {addError && (
+                <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700">
+                  {addError}
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Оқушының аты-жөні</label>
                 <input

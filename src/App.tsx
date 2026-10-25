@@ -34,14 +34,20 @@ function AppContent() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
+        if (isClassTeacher) return <ClassTeacherDashboard />;
+        if (isCafeteria) return <CafeteriaDashboard />;
         return <OverviewDashboard onNavigate={setActiveTab} />;
 
       case 'self_study':
+        return <EducatorDashboard />;
+
       case 'attendance':
       case 'homework':
+        if (isClassTeacher) return <ClassTeacherDashboard />;
         return <EducatorDashboard />;
 
       case 'meals':
+        if (isCafeteria) return <CafeteriaDashboard />;
         return <WeekendMealGrid />;
 
       case 'dormitory':
@@ -54,6 +60,7 @@ function AppContent() {
         return <AdminDashboard onNavigate={setActiveTab} />;
 
       case 'timetables':
+        if (isClassTeacher) return <ClassTeacherDashboard />;
         return <TimetableManager />;
 
       case 'educator_performance':

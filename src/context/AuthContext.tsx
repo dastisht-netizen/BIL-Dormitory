@@ -60,9 +60,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const all = storage.getUsers();
     const cleanId = identifier.trim().toLowerCase();
 
-    // Match by email, username prefix, or role
+    // Match by IIN, email, username prefix, or role
     const found = all.find(
       (u) =>
+        (u.iin && u.iin.trim() === cleanId) ||
         u.email.toLowerCase() === cleanId ||
         u.id.toLowerCase() === cleanId ||
         u.name.toLowerCase().includes(cleanId) ||
