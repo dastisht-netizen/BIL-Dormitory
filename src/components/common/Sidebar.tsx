@@ -118,9 +118,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-white border-r border-gray-100 p-4 shrink-0 h-[calc(100vh-4rem)] sticky top-16 overflow-y-auto">
-        <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-3 mb-2">
-          {currentUser.role === 'ADMINISTRATOR' ? 'Басқару панелі' : 'Жұмыс модулі'}
+      <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-white border-r border-slate-100 p-4 shrink-0 h-[calc(100vh-4rem)] sticky top-16 overflow-y-auto">
+        <div className="text-[11px] font-black text-slate-400 uppercase tracking-wider px-3 mb-2 flex items-center justify-between">
+          <span>{currentUser.role === 'ADMINISTRATOR' ? 'Басқару панелі' : 'Жұмыс модулі'}</span>
+          <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
         </div>
 
         <nav className="space-y-1">
@@ -133,14 +134,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
                 onClick={() => handleSelect(item.id)}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all group ${
                   isActive
-                    ? 'bg-[#075C42] text-white shadow-sm'
-                    : 'text-[#24342D]/80 hover:bg-[#E6F4EA]/60 hover:text-[#075C42]'
+                    ? 'bg-[#4338CA] text-white shadow-md shadow-indigo-500/20'
+                    : 'text-slate-700 hover:bg-[#EEF2FF] hover:text-[#4338CA]'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <Icon
                     className={`w-4 h-4 transition-transform group-hover:scale-110 ${
-                      isActive ? 'text-[#FFE9A8]' : 'text-gray-400 group-hover:text-[#138A62]'
+                      isActive ? 'text-[#FFE9A8]' : 'text-slate-400 group-hover:text-[#4338CA]'
                     }`}
                   />
                   <span>{item.label}</span>
@@ -149,8 +150,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       isActive
-                        ? 'bg-[#FFE9A8] text-[#075C42]'
-                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                        ? 'bg-white/20 text-white'
+                        : 'bg-[#EEF2FF] text-[#4338CA] border border-indigo-200'
                     }`}
                   >
                     {item.badge}
@@ -162,13 +163,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
         </nav>
 
         {/* School Info Box in footer */}
-        <div className="mt-auto pt-4 border-t border-gray-100">
-          <div className="p-3 rounded-2xl bg-[#FFF8E7] border border-[#FFE9A8]/70">
+        <div className="mt-auto pt-4 border-t border-slate-100">
+          <div className="p-3.5 rounded-2xl bg-[#EEF2FF] border border-indigo-100">
             <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-[#075C42]" />
-              <span className="text-xs font-bold text-[#075C42] truncate">{siteConfig.schoolName}</span>
+              <Shield className="w-4 h-4 text-[#4338CA]" />
+              <span className="text-xs font-black text-[#0F172A] truncate">{siteConfig.schoolName}</span>
             </div>
-            <p className="text-[11px] text-[#24342D]/80 mt-1 leading-relaxed line-clamp-2">
+            <p className="text-[11px] text-slate-600 mt-1 leading-relaxed line-clamp-2">
               {siteConfig.subtitle}
             </p>
           </div>
@@ -176,7 +177,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
       </aside>
 
       {/* Mobile Bottom Navigation Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-200 px-2 py-1 flex items-center justify-around shadow-lg">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 py-1 flex items-center justify-around shadow-xl">
         {mobileBottomItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -185,11 +186,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
               key={item.id}
               onClick={() => handleSelect(item.id)}
               className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition ${
-                isActive ? 'text-[#075C42]' : 'text-gray-400 hover:text-gray-600'
+                isActive ? 'text-[#4338CA]' : 'text-slate-400 hover:text-slate-600'
               }`}
             >
               <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : ''}`} />
-              <span className={`text-[10px] mt-0.5 ${isActive ? 'font-bold' : 'font-medium'}`}>
+              <span className={`text-[10px] mt-0.5 ${isActive ? 'font-black text-[#4338CA]' : 'font-medium'}`}>
                 {item.label}
               </span>
             </button>
@@ -199,7 +200,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
         {/* More Menu Trigger for Mobile */}
         <button
           onClick={() => setMobileDrawerOpen(true)}
-          className="flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-gray-400 hover:text-gray-600"
+          className="flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-slate-400 hover:text-slate-600"
         >
           <Menu className="w-5 h-5" />
           <span className="text-[10px] font-medium mt-0.5">Мәзір</span>
@@ -208,21 +209,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
 
       {/* Mobile Full Navigation Drawer */}
       {mobileDrawerOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex bg-black/50 backdrop-blur-xs animate-in fade-in">
+        <div className="md:hidden fixed inset-0 z-50 flex bg-black/60 backdrop-blur-xs animate-in fade-in">
           <div className="w-4/5 max-w-xs bg-white h-full p-4 flex flex-col shadow-2xl animate-in slide-in-from-left duration-200 overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-[#075C42] text-white flex items-center justify-center font-bold text-xs">
+                <div className="w-9 h-9 rounded-xl bg-[#0F172A] text-white flex items-center justify-center font-bold text-xs">
                   BIL
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-sm text-[#075C42]">ARYS BIL</h3>
-                  <p className="text-[10px] text-gray-400">{currentUser.name}</p>
+                  <h3 className="font-black text-sm text-[#0F172A]">BIL Dormitory</h3>
+                  <p className="text-[10px] text-slate-400">{currentUser.name}</p>
                 </div>
               </div>
               <button
                 onClick={() => setMobileDrawerOpen(false)}
-                className="text-gray-400 hover:text-gray-600 p-1"
+                className="text-slate-400 hover:text-slate-600 p-1"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -238,8 +239,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
                     onClick={() => handleSelect(item.id)}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold ${
                       isActive
-                        ? 'bg-[#075C42] text-white'
-                        : 'text-[#24342D] hover:bg-[#E6F4EA]'
+                        ? 'bg-[#4338CA] text-white shadow-sm'
+                        : 'text-slate-700 hover:bg-[#EEF2FF]'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -247,7 +248,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
                       <span>{item.label}</span>
                     </div>
                     {item.badge && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#FFE9A8] text-[#075C42]">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#EEF2FF] text-[#4338CA] font-bold">
                         {item.badge}
                       </span>
                     )}

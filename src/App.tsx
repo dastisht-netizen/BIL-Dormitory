@@ -10,6 +10,7 @@ import { Header } from './components/common/Header';
 import { Sidebar, NavTab } from './components/common/Sidebar';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
 
+import { OverviewDashboard } from './components/dashboard/OverviewDashboard';
 import { EducatorDashboard } from './components/educator/EducatorDashboard';
 import { WeekendMealGrid } from './components/meals/WeekendMealGrid';
 import { DormitoryGrid } from './components/dormitory/DormitoryGrid';
@@ -28,19 +29,12 @@ function AppContent() {
   const { t } = useLanguage();
 
   // Initial tab depending on role
-  const [activeTab, setActiveTab] = useState<NavTab>(() => {
-    if (isEducator) return 'self_study';
-    if (isCafeteria) return 'meals';
-    return 'dashboard';
-  });
+  const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
 
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        if (isAdmin) return <AdminDashboard onNavigate={setActiveTab} />;
-        if (isClassTeacher) return <ClassTeacherDashboard />;
-        if (isCafeteria) return <CafeteriaDashboard />;
-        return <EducatorDashboard />;
+        return <OverviewDashboard onNavigate={setActiveTab} />;
 
       case 'self_study':
       case 'attendance':
@@ -81,14 +75,18 @@ function AppContent() {
         return <AdminDashboard onNavigate={setActiveTab} />;
 
       default:
-        return <AdminDashboard onNavigate={setActiveTab} />;
+        return <OverviewDashboard onNavigate={setActiveTab} />;
     }
   };
 
   return (
     <div className="min-h-screen bg-[#F8FAF9] flex flex-col text-[#24342D]">
-      {/* Top Header */}
-      <Header onOpenAdmin={() => setActiveTab('settings')} />
+      {/* Top Header with BilLogo & Sub Navigation */}
+      <Header
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        onOpenAdmin={() => setActiveTab('settings')}
+      />
 
       {/* Main Workspace */}
       <div className="flex-1 flex max-w-7xl w-full mx-auto pb-20 md:pb-8">

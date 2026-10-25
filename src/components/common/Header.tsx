@@ -6,7 +6,6 @@ import {
   LogOut,
   ChevronDown,
   Sparkles,
-  School,
   Shield,
   BookOpen,
   Utensils,
@@ -16,20 +15,30 @@ import {
   CheckCircle2,
   Lock,
   User as UserIcon,
-  Sliders
+  Sliders,
+  Home,
+  CalendarDays,
+  BarChart2,
+  FileSpreadsheet,
+  Building2,
+  Users
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { storage } from '../../db/storage';
 import { PWAInstallButton } from '../pwa/PWAInstallButton';
 import { NotificationManager } from './NotificationManager';
+import { BilLogo } from './BilLogo';
 import { Language, Role } from '../../types';
+import { NavTab } from './Sidebar';
 
 interface HeaderProps {
   onOpenAdmin?: () => void;
+  activeTab?: NavTab;
+  onSelectTab?: (tab: NavTab) => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenAdmin }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenAdmin, activeTab = 'dashboard', onSelectTab }) => {
   const {
     currentUser,
     switchRole,
@@ -62,11 +71,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin }) => {
   const hours = currentTime.getHours();
   const isSelfStudyTime = hours >= 19 && hours < 21;
 
-  const roleLabels: Record<Role, { title: string; icon: any; color: string }> = {
-    ADMINISTRATOR: { title: t.roles.ADMINISTRATOR, icon: Shield, color: 'bg-emerald-100 text-[#075C42]' },
-    EDUCATOR: { title: t.roles.EDUCATOR, icon: BookOpen, color: 'bg-blue-100 text-blue-800' },
-    CLASS_TEACHER: { title: t.roles.CLASS_TEACHER, icon: GraduationCap, color: 'bg-amber-100 text-amber-800' },
-    CAFETERIA_STAFF: { title: t.roles.CAFETERIA_STAFF, icon: Utensils, color: 'bg-purple-100 text-purple-800' },
+  const roleLabels: Record<Role, { title: string; icon: any; color: string; bg: string }> = {
+    ADMINISTRATOR: { title: 'Жатақхана меңгерушісі', icon: Shield, color: 'text-amber-400', bg: 'bg-amber-400/10 border-amber-400/30' },
+    EDUCATOR: { title: 'Тәрбиеші', icon: BookOpen, color: 'text-emerald-400', bg: 'bg-emerald-400/10 border-emerald-400/30' },
+    CLASS_TEACHER: { title: 'Сынып жетекшісі', icon: GraduationCap, color: 'text-blue-400', bg: 'bg-blue-400/10 border-blue-400/30' },
+    CAFETERIA_STAFF: { title: 'Асхана қызметкері', icon: Utensils, color: 'text-purple-400', bg: 'bg-purple-400/10 border-purple-400/30' },
   };
 
   const currentRoleInfo = roleLabels[currentUser.role] || roleLabels.ADMINISTRATOR;
@@ -97,11 +106,44 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin }) => {
     if (onOpenAdmin) onOpenAdmin();
   };
 
+  const handleQuickRoleSwitch = (roleKey: 'manager' | 'educator' | 'teacher' | 'cafeteria') => {
+    if (roleKey === 'manager') {
+      if (!isAdmin) {
+        handleQuickAdminLogin();
+      } else if (onOpenAdmin) {
+        onOpenAdmin();
+      }
+    } else if (roleKey === 'educator') {
+      switchRole('EDUCATOR', 'cls-7a');
+      if (onSelectTab) onSelectTab('self_study');
+    } else if (roleKey === 'teacher') {
+      switchRole('CLASS_TEACHER', 'cls-7a');
+      if (onSelectTab) onSelectTab('students');
+    } else if (roleKey === 'cafeteria') {
+      switchRole('CAFETERIA_STAFF');
+      if (onSelectTab) onSelectTab('meals');
+    }
+  };
+
+  // Nav buttons for horizontal navigation sub-bar
+  const subNavItems = [
+    { id: 'dashboard' as NavTab, label: 'Басты бет', icon: Home },
+    { id: 'students' as NavTab, label: 'Оқушылар', icon: Users },
+    { id: 'self_study' as NavTab, label: 'Кешкі қатысу', icon: Clock },
+    { id: 'homework' as NavTab, label: 'Үй тапсырмасы', icon: BookOpen },
+    { id: 'dormitory' as NavTab, label: 'Жатақхана', icon: Building2 },
+    { id: 'meals' as NavTab, label: 'Асхана тізімі', icon: Utensils },
+    { id: 'timetables' as NavTab, label: 'Кесте', icon: CalendarDays },
+    { id: 'analytics' as NavTab, label: 'Аналитика', icon: BarChart2 },
+    { id: 'quarterly_reports' as NavTab, label: 'Тоқсандық есеп', icon: FileSpreadsheet },
+    { id: 'settings' as NavTab, label: 'Сайтты басқару', icon: Sliders, highlight: true },
+  ];
+
   return (
     <>
       {/* Announcement Bar */}
       {siteConfig.announcementActive && siteConfig.announcement && (
-        <div className="bg-[#FFE9A8] text-[#075C42] px-4 py-1.5 text-xs font-bold border-b border-[#F5B838]/40 flex items-center justify-between shadow-xs">
+        <div className="bg-[#FFE9A8] text-[#075C42] px-4 py-1 text-xs font-bold border-b border-[#F5B838]/40 flex items-center justify-between shadow-xs">
           <div className="max-w-7xl mx-auto w-full flex items-center gap-2">
             <Megaphone className="w-4 h-4 shrink-0 text-[#075C42] animate-bounce" />
             <span className="truncate">{siteConfig.announcement}</span>
@@ -109,159 +151,216 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin }) => {
         </div>
       )}
 
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xs">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-18 flex items-center justify-between gap-2 sm:gap-4">
-          {/* Brand identity */}
-          <div className="flex items-center gap-3">
-            <div className="relative flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-[#075C42] to-[#138A62] shadow-md shadow-[#075C42]/20 text-white shrink-0">
-              <School className="w-6 h-6 text-[#FFE9A8]" />
-              {isSelfStudyTime && (
-                <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                </span>
-              )}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-base sm:text-lg tracking-tight text-[#075C42]">
-                  {siteConfig.schoolName}
-                </span>
-                <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded-md bg-[#FFE9A8] text-[#075C42]">
-                  {currentYear?.name || '2026–2027'}
-                </span>
+      {/* Main Top Header: Deep Slate Navy (#0F172A) */}
+      <header className="sticky top-0 z-40 bg-[#0F172A] border-b border-[#1E293B] text-white shadow-md">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="h-16 flex items-center justify-between gap-3">
+            {/* Left: BilLogo & School Brand */}
+            <div className="flex items-center gap-3">
+              <BilLogo className="w-9 h-9" />
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-base sm:text-lg tracking-tight text-white flex items-center gap-1.5">
+                    {siteConfig.appTitle || 'BIL Dormitory'}
+                  </span>
+                  <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-[#4338CA] text-white shadow-2xs">
+                    {siteConfig.schoolName || 'Арыс БІЛ'}
+                  </span>
+                </div>
+                <p className="hidden md:block text-[11px] font-medium text-slate-400 leading-tight">
+                  {siteConfig.subtitle || 'Өзін-өзі дайындық және жатақхана мониторингі'}
+                </p>
               </div>
-              <p className="hidden md:block text-[11px] font-medium text-gray-500 leading-tight">
-                {siteConfig.subtitle || t.subtitle}
-              </p>
             </div>
-          </div>
 
-          {/* Live Study Status & Clock */}
-          <div className="hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-[#F8FAF9] border border-gray-100 text-xs">
-            <div className="flex items-center gap-1.5 text-gray-600 font-medium">
-              <Clock className="w-3.5 h-3.5 text-[#138A62]" />
-              <span>{currentTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+            {/* Center: Live Self-Study Clock badge */}
+            <div className="hidden lg:flex items-center gap-2.5 px-3 py-1 rounded-xl bg-[#1E293B] border border-slate-700 text-xs">
+              <Clock className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="font-mono text-slate-200">
+                {currentTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+              <span className="text-slate-500">•</span>
+              <span className={isSelfStudyTime ? 'text-emerald-400 font-bold flex items-center gap-1' : 'text-slate-400'}>
+                {isSelfStudyTime && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />}
+                Дайындық: {siteConfig.studyStartTime}–{siteConfig.studyEndTime}
+              </span>
             </div>
-            <div className="h-3 w-[1px] bg-gray-200" />
-            <div className="flex items-center gap-1.5 font-semibold">
-              {isSelfStudyTime ? (
-                <span className="flex items-center gap-1 text-[#138A62]">
-                  <span className="w-2 h-2 rounded-full bg-[#138A62] animate-pulse" />
-                  Кешкі дайындық ({siteConfig.studyStartTime}–{siteConfig.studyEndTime})
-                </span>
+
+            {/* Right: Quick Role Switcher + Language + Admin button */}
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              {/* Desktop Direct Role Switcher Pills */}
+              <div className="hidden xl:flex items-center bg-[#1E293B] p-1 rounded-xl border border-slate-800 text-[11px] font-semibold gap-1">
+                <button
+                  onClick={() => handleQuickRoleSwitch('manager')}
+                  className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${
+                    isAdmin ? 'bg-amber-500 text-slate-950 font-black shadow-xs' : 'text-slate-300 hover:text-white'
+                  }`}
+                  title="Жатақхана меңгерушісі (Әкімші)"
+                >
+                  <Shield className="w-3 h-3" />
+                  <span>Меңгеруші (Админ)</span>
+                </button>
+                <button
+                  onClick={() => handleQuickRoleSwitch('educator')}
+                  className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${
+                    isEducator ? 'bg-emerald-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:text-white'
+                  }`}
+                  title="Тәрбиеші"
+                >
+                  <BookOpen className="w-3 h-3" />
+                  <span>Тәрбиеші</span>
+                </button>
+                <button
+                  onClick={() => handleQuickRoleSwitch('teacher')}
+                  className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${
+                    isClassTeacher ? 'bg-blue-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:text-white'
+                  }`}
+                  title="Сынып жетекшісі"
+                >
+                  <GraduationCap className="w-3 h-3" />
+                  <span>Жетекші</span>
+                </button>
+                <button
+                  onClick={() => handleQuickRoleSwitch('cafeteria')}
+                  className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${
+                    isCafeteria ? 'bg-purple-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:text-white'
+                  }`}
+                  title="Асхана қызметкері"
+                >
+                  <Utensils className="w-3 h-3" />
+                  <span>Асхана</span>
+                </button>
+              </div>
+
+              {/* Direct Site Settings (Admin) Button */}
+              {isAdmin ? (
+                <button
+                  onClick={() => {
+                    if (onOpenAdmin) onOpenAdmin();
+                    if (onSelectTab) onSelectTab('settings');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 text-xs font-black shadow-md hover:from-amber-400 hover:to-amber-500 transition cursor-pointer"
+                  title="Сайтты басқару және параметрлерді өзгерту"
+                >
+                  <Sliders className="w-3.5 h-3.5 text-slate-950" />
+                  <span>Сайтты басқару</span>
+                </button>
               ) : (
-                <span className="text-gray-500">
-                  Кешкі дайындық: {siteConfig.studyStartTime}–{siteConfig.studyEndTime}
-                </span>
+                <button
+                  onClick={() => setShowLoginModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1E293B] border border-amber-500/40 text-amber-300 text-xs font-bold hover:bg-amber-500/10 transition shadow-2xs"
+                  title="Админ ретінде кіру"
+                >
+                  <Key className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Админ кіру</span>
+                </button>
               )}
+
+              {/* PWA Install */}
+              <PWAInstallButton />
+
+              {/* Notifications */}
+              <NotificationManager />
+
+              {/* Language Selector */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowLangMenu(!showLangMenu)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-[#1E293B] border border-slate-700 text-slate-200 hover:bg-slate-800 transition"
+                  title="Тілді таңдау"
+                >
+                  <Globe className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="uppercase">{language}</span>
+                  <ChevronDown className="w-3 h-3 text-slate-400" />
+                </button>
+
+                {showLangMenu && (
+                  <div className="absolute right-0 mt-2 w-36 rounded-xl bg-[#1E293B] shadow-xl border border-slate-700 py-1 z-50 animate-in fade-in">
+                    {languages.map((l) => (
+                      <button
+                        key={l.code}
+                        onClick={() => {
+                          setLanguage(l.code);
+                          setShowLangMenu(false);
+                        }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left font-medium transition ${
+                          language === l.code ? 'text-amber-400 font-bold bg-slate-800' : 'text-slate-300 hover:bg-slate-800'
+                        }`}
+                      >
+                        <span>{l.flag}</span>
+                        <span>{l.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* User profile & Role Modal Trigger */}
+              <button
+                onClick={() => setShowRoleModal(true)}
+                className="flex items-center gap-2 pl-2 pr-3 py-1 rounded-xl bg-[#1E293B] border border-slate-700 hover:border-slate-500 transition text-left"
+              >
+                <div
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 shadow-xs ${
+                    isAdmin ? 'bg-amber-500 text-slate-950 font-black' : 'bg-emerald-600 text-white'
+                  }`}
+                >
+                  {currentUser.name.charAt(0)}
+                </div>
+                <div className="hidden md:block text-left">
+                  <div className="text-xs font-bold text-slate-100 max-w-[110px] truncate leading-tight">
+                    {currentUser.name}
+                  </div>
+                  <div className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                    <span>{currentRoleInfo.title}</span>
+                  </div>
+                </div>
+                <ChevronDown className="w-3 h-3 text-slate-400" />
+              </button>
             </div>
           </div>
 
-          {/* Actions & Profile */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Admin Badge / Direct Admin Panel Trigger */}
-            {isAdmin ? (
-              <button
-                onClick={() => {
-                  if (onOpenAdmin) onOpenAdmin();
-                }}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#075C42] text-[#FFE9A8] text-xs font-extrabold hover:bg-[#054531] shadow-xs transition"
-                title="Сайтты басқару панелін ашу"
-              >
-                <Sliders className="w-3.5 h-3.5" />
-                <span>Сайтты басқару</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowLoginModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 text-xs font-bold hover:bg-amber-100 transition shadow-2xs"
-                title="Админ ретінде кіру"
-              >
-                <Key className="w-3.5 h-3.5 text-amber-700" />
-                <span className="hidden sm:inline">Админ кіру</span>
-              </button>
-            )}
-
-            {/* PWA Install */}
-            <PWAInstallButton />
-
-            {/* Notifications */}
-            <NotificationManager />
-
-            {/* Language Selector */}
-            <div className="relative">
-              <button
-                onClick={() => setShowLangMenu(!showLangMenu)}
-                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-100 transition"
-                title="Тілді таңдау"
-              >
-                <Globe className="w-4 h-4 text-gray-500" />
-                <span className="uppercase">{language}</span>
-                <ChevronDown className="w-3 h-3 text-gray-400" />
-              </button>
-
-              {showLangMenu && (
-                <div className="absolute right-0 mt-2 w-36 rounded-xl bg-white shadow-xl border border-gray-100 py-1 z-50 animate-in fade-in">
-                  {languages.map((l) => (
-                    <button
-                      key={l.code}
-                      onClick={() => {
-                        setLanguage(l.code);
-                        setShowLangMenu(false);
-                      }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left font-medium hover:bg-[#E6F4EA] transition ${
-                        language === l.code ? 'text-[#075C42] font-bold bg-[#E6F4EA]/50' : 'text-gray-700'
-                      }`}
-                    >
-                      <span>{l.flag}</span>
-                      <span>{l.name}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+          {/* Sub Navigation Bar: Quick Horizontally Scrollable Tabs */}
+          {onSelectTab && (
+            <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto py-2 border-t border-[#1E293B] no-scrollbar text-xs">
+              {subNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => onSelectTab(item.id)}
+                    className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition flex items-center gap-1.5 font-bold shrink-0 ${
+                      isActive
+                        ? item.highlight
+                          ? 'bg-amber-500 text-slate-950 shadow-sm'
+                          : 'bg-[#4338CA] text-white shadow-sm'
+                        : item.highlight
+                        ? 'text-amber-400 hover:bg-amber-400/10'
+                        : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
             </div>
-
-            {/* User profile & Role Switcher */}
-            <button
-              onClick={() => setShowRoleModal(true)}
-              className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl border border-gray-200 hover:border-[#138A62] hover:bg-[#E6F4EA]/40 transition text-left"
-            >
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 shadow-xs ${
-                isAdmin ? 'bg-[#075C42] text-[#FFE9A8]' : 'bg-[#138A62] text-white'
-              }`}>
-                {currentUser.name.charAt(0)}
-              </div>
-              <div className="hidden sm:block text-left">
-                <div className="text-xs font-bold text-[#24342D] max-w-[120px] truncate leading-tight">
-                  {currentUser.name}
-                </div>
-                <div className="text-[10px] font-semibold text-[#138A62] flex items-center gap-1">
-                  <span>{currentRoleInfo.title}</span>
-                  {currentUser.assignedClassIds && currentUser.assignedClassIds.length > 0 && (
-                    <span className="text-gray-500">
-                      ({currentUser.assignedClassIds.map(id => id.replace('cls-', '').toUpperCase()).join(', ')})
-                    </span>
-                  )}
-                </div>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-            </button>
-          </div>
+          )}
         </div>
 
         {/* Admin Login Modal */}
         {showLoginModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-            <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-gray-100 text-left">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in">
+            <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-gray-100 text-left text-slate-900">
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-xl bg-[#075C42] text-[#FFE9A8] flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-[#075C42] text-[#FFE9A8] flex items-center justify-center font-black">
                     <Shield className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="font-extrabold text-base text-[#24342D]">Администратор ретінде кіру</h3>
-                    <p className="text-[11px] text-gray-400">Сайтты және деректерді толық басқару</p>
+                    <p className="text-[11px] text-gray-400">Сайтты және барлық деректерді өзгерту құқығы</p>
                   </div>
                 </div>
                 <button
@@ -306,8 +405,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin }) => {
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-gray-50 border border-gray-100 text-[11px] text-gray-600">
-                  <span className="font-bold text-[#075C42] block mb-0.5">Бастапқы әкімші деректері:</span>
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-[11px] text-emerald-900">
+                  <span className="font-bold text-[#075C42] block mb-0.5">Бастапқы әкімші логині:</span>
                   Логин: <code>admin@bil-arys.edu.kz</code> | Құпиясөз: <code>admin123</code>
                 </div>
 
@@ -343,8 +442,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin }) => {
 
         {/* Role Selection Modal */}
         {showRoleModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in">
-            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-gray-100">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in">
+            <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-gray-100 text-slate-900">
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <div className="flex items-center gap-2">
                   <UserCheck className="w-5 h-5 text-[#075C42]" />
@@ -359,7 +458,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin }) => {
               </div>
 
               <p className="text-xs text-gray-500 mt-2">
-                Тестілеу немесе жұмыс істеу үшін қажетті рөлді таңдаңыз:
+                Жүйенің кез келген бөлімін тексеру үшін рөлді таңдаңыз:
               </p>
 
               <div className="mt-4 space-y-2.5">
@@ -367,37 +466,38 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin }) => {
                   onClick={() => {
                     handleQuickAdminLogin();
                   }}
-                  className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition ${
+                  className={`w-full flex items-center justify-between p-3.5 rounded-2xl border text-left transition ${
                     isAdmin
-                      ? 'border-[#075C42] bg-[#E6F4EA] text-[#075C42] font-bold'
+                      ? 'border-amber-500 bg-amber-50 text-amber-950 font-bold'
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black">
                       <Shield className="w-5 h-5" />
                     </div>
                     <div>
                       <div className="text-sm font-bold text-[#24342D]">Нұрлан Сейітқалиұлы</div>
-                      <div className="text-xs text-gray-500">Әкімші (Сайтты толық басқару және өзгерту)</div>
+                      <div className="text-xs text-amber-800 font-semibold">Жатақхана меңгерушісі (Сайт әкімшісі)</div>
                     </div>
                   </div>
-                  {isAdmin && <span className="text-xs font-bold text-[#075C42]">Ағымдағы</span>}
+                  {isAdmin && <span className="text-xs font-bold text-amber-700 bg-amber-200/60 px-2 py-0.5 rounded-md">Белсенді</span>}
                 </button>
 
                 <button
                   onClick={() => {
                     switchRole('EDUCATOR', 'cls-7a');
                     setShowRoleModal(false);
+                    if (onSelectTab) onSelectTab('self_study');
                   }}
-                  className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition ${
+                  className={`w-full flex items-center justify-between p-3.5 rounded-2xl border text-left transition ${
                     isEducator && currentUser.assignedClassIds?.includes('cls-7a')
                       ? 'border-[#138A62] bg-[#E6F4EA] text-[#075C42] font-bold'
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center">
                       <BookOpen className="w-5 h-5" />
                     </div>
                     <div>
@@ -406,7 +506,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin }) => {
                     </div>
                   </div>
                   {isEducator && currentUser.assignedClassIds?.includes('cls-7a') && (
-                    <span className="text-xs font-bold text-[#075C42]">Ағымдағы</span>
+                    <span className="text-xs font-bold text-[#075C42] bg-emerald-200/60 px-2 py-0.5 rounded-md">Белсенді</span>
                   )}
                 </button>
 
@@ -414,15 +514,16 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin }) => {
                   onClick={() => {
                     switchRole('CLASS_TEACHER', 'cls-7a');
                     setShowRoleModal(false);
+                    if (onSelectTab) onSelectTab('students');
                   }}
-                  className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition ${
+                  className={`w-full flex items-center justify-between p-3.5 rounded-2xl border text-left transition ${
                     isClassTeacher
-                      ? 'border-amber-600 bg-amber-50 text-amber-900 font-bold'
+                      ? 'border-blue-600 bg-blue-50 text-blue-900 font-bold'
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-amber-600 text-white flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center">
                       <GraduationCap className="w-5 h-5" />
                     </div>
                     <div>
@@ -430,22 +531,23 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin }) => {
                       <div className="text-xs text-gray-500">Сынып жетекшісі (7А сыныбы)</div>
                     </div>
                   </div>
-                  {isClassTeacher && <span className="text-xs font-bold text-amber-800">Ағымдағы</span>}
+                  {isClassTeacher && <span className="text-xs font-bold text-blue-800 bg-blue-200/60 px-2 py-0.5 rounded-md">Белсенді</span>}
                 </button>
 
                 <button
                   onClick={() => {
                     switchRole('CAFETERIA_STAFF');
                     setShowRoleModal(false);
+                    if (onSelectTab) onSelectTab('meals');
                   }}
-                  className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition ${
+                  className={`w-full flex items-center justify-between p-3.5 rounded-2xl border text-left transition ${
                     isCafeteria
                       ? 'border-purple-600 bg-purple-50 text-purple-900 font-bold'
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center">
                       <Utensils className="w-5 h-5" />
                     </div>
                     <div>
@@ -453,14 +555,14 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin }) => {
                       <div className="text-xs text-gray-500">Асхана қызметкері (Тамақтану есебі)</div>
                     </div>
                   </div>
-                  {isCafeteria && <span className="text-xs font-bold text-purple-800">Ағымдағы</span>}
+                  {isCafeteria && <span className="text-xs font-bold text-purple-800 bg-purple-200/60 px-2 py-0.5 rounded-md">Белсенді</span>}
                 </button>
               </div>
 
               <div className="mt-5 pt-3 border-t border-gray-100 flex justify-end">
                 <button
                   onClick={() => setShowRoleModal(false)}
-                  className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-semibold hover:bg-gray-200 transition"
+                  className="px-5 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition"
                 >
                   Жабу
                 </button>

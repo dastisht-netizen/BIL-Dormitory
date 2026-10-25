@@ -35,11 +35,11 @@ export const mealPeriodNames: Record<Language, Record<MealPeriod, string>> = {
 
 export const translations = {
   kk: {
-    appTitle: 'ARYS BIL STUDY TRACKER',
-    shortTitle: 'BIL Tracker',
-    subtitle: 'Арыс БИЛ мектеп-интернатының оқу және жатақхана жүйесі',
+    appTitle: 'BIL Dormitory',
+    shortTitle: 'BIL Dormitory',
+    subtitle: 'Арыс БІЛ мектеп-интернатының оқу және жатақхана жүйесі',
     roles: {
-      ADMINISTRATOR: 'Әкімші',
+      ADMINISTRATOR: 'Жатақхана меңгерушісі',
       EDUCATOR: 'Тәрбиеші',
       CLASS_TEACHER: 'Сынып жетекшісі',
       CAFETERIA_STAFF: 'Асхана қызметкері',
@@ -133,14 +133,14 @@ export const translations = {
     demoModeNotice: 'Демо режимі: барлық функционал нақты уақытта жұмыс істейді және сақталады.',
   },
   ru: {
-    appTitle: 'ARYS BIL STUDY TRACKER',
-    shortTitle: 'BIL Tracker',
+    appTitle: 'BIL Dormitory',
+    shortTitle: 'BIL Dormitory',
     subtitle: 'Система мониторинга самоподготовки и интерната школы Арыс БИЛ',
     roles: {
-      ADMINISTRATOR: 'Администратор',
+      ADMINISTRATOR: 'Заведующий общежитием',
       EDUCATOR: 'Воспитатель',
       CLASS_TEACHER: 'Классный руководитель',
-      CAFETERIA_STAFF: 'Сотрудник столовой',
+      CAFETERIA_STAFF: 'Работник столовой',
     },
     nav: {
       dashboard: 'Главная',
@@ -231,12 +231,12 @@ export const translations = {
     demoModeNotice: 'Демо-режим: все операции работают в реальном времени и сохраняются локально.',
   },
   en: {
-    appTitle: 'ARYS BIL STUDY TRACKER',
-    shortTitle: 'BIL Tracker',
+    appTitle: 'BIL Dormitory',
+    shortTitle: 'BIL Dormitory',
     subtitle: 'Self-Study & Dormitory Management System for Arys BIL School',
     roles: {
-      ADMINISTRATOR: 'Administrator',
-      EDUCATOR: 'Educator / Dorm Master',
+      ADMINISTRATOR: 'Dormitory Manager',
+      EDUCATOR: 'Educator',
       CLASS_TEACHER: 'Class Teacher',
       CAFETERIA_STAFF: 'Cafeteria Staff',
     },
