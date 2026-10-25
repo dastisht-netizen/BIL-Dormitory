@@ -5,8 +5,9 @@ import { storage } from '../db/storage';
 interface AuthContextType {
   currentUser: User;
   setCurrentUser: (user: User) => void;
+  isAuthenticated: boolean;
   switchRole: (role: Role, classId?: string) => void;
-  login: (identifier: string, password?: string) => { success: boolean; message?: string };
+  login: (identifier: string, password?: string) => { success: boolean; message?: string; user?: User };
   logout: () => void;
   siteConfig: SiteConfig;
   updateSiteConfig: (config: SiteConfig) => void;
@@ -25,11 +26,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<User[]>(() => storage.getUsers());
   const [siteConfig, setSiteConfigState] = useState<SiteConfig>(() => storage.getSiteConfig());
+
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const authFlag = localStorage.getItem('bil_authenticated');
+    return authFlag !== 'false';
+  });
+
   const [currentUser, setCurrentUserState] = useState<User>(() => {
     const savedUserId = localStorage.getItem('bil_current_user_id');
     const allUsers = storage.getUsers();
     const found = allUsers.find((u) => u.id === savedUserId);
-    return found || allUsers[0]; // defaults to Administrator
+    return found || allUsers[0]; // defaults to Administrator (Достонбек Тажиханов)
   });
 
   const refreshUsers = () => {
@@ -42,6 +49,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const setCurrentUser = (user: User) => {
     setCurrentUserState(user);
     localStorage.setItem('bil_current_user_id', user.id);
+    localStorage.setItem('bil_authenticated', 'true');
+    setIsAuthenticated(true);
   };
 
   const updateSiteConfig = (newConfig: SiteConfig) => {
@@ -56,7 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshUsers();
   };
 
-  const login = (identifier: string, password?: string): { success: boolean; message?: string } => {
+  const login = (identifier: string, password?: string): { success: boolean; message?: string; user?: User } => {
     const all = storage.getUsers();
     const cleanId = identifier.trim().toLowerCase();
 
@@ -74,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     if (!found) {
-      return { success: false, message: 'Қолданушы табылмады. Email немесе логинді дұрыс енгізіңіз.' };
+      return { success: false, message: 'Қолданушы табылмады. 12 таңбалы ЖСН (ИИН) немесе логинді дұрыс енгізіңіз.' };
     }
 
     // Password check if provided
@@ -82,15 +91,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, message: 'Құпиясөз қате. Қайталап көріңіз.' };
     }
 
-    setCurrentUser(found);
-    return { success: true };
+    localStorage.setItem('bil_authenticated', 'true');
+    localStorage.setItem('bil_current_user_id', found.id);
+    setCurrentUserState(found);
+    setIsAuthenticated(true);
+    return { success: true, user: found };
   };
 
   const logout = () => {
-    // Switch to first educator or non-admin, or keep current
-    const all = storage.getUsers();
-    const guestOrEdu = all.find((u) => u.role === 'EDUCATOR') || all[0];
-    setCurrentUser(guestOrEdu);
+    localStorage.setItem('bil_authenticated', 'false');
+    setIsAuthenticated(false);
   };
 
   const switchRole = (role: Role, targetClassId?: string) => {
@@ -102,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     if (target) {
       setCurrentUser(target);
+      setIsAuthenticated(true);
     }
   };
 
@@ -126,6 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         currentUser,
         setCurrentUser,
+        isAuthenticated,
         switchRole,
         login,
         logout,
@@ -146,7 +158,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export const useAuth = (): AuthContextType => {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');

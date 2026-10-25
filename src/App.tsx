@@ -23,13 +23,24 @@ import { QuarterlyReportView } from './components/reports/QuarterlyReportView';
 import { AcademicYearManager } from './components/admin/AcademicYearManager';
 import { StudentManager } from './components/students/StudentManager';
 import { AdminDashboard } from './components/admin/AdminDashboard';
+import { LoginScreen } from './components/auth/LoginScreen';
 
 function AppContent() {
-  const { currentUser, isAdmin, isEducator, isClassTeacher, isCafeteria } = useAuth();
+  const { currentUser, isAuthenticated, isAdmin, isEducator, isClassTeacher, isCafeteria } = useAuth();
   const { t } = useLanguage();
 
   // Initial tab depending on role
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+
+  if (!isAuthenticated) {
+    return (
+      <LoginScreen
+        onLoginSuccess={(targetTab) => {
+          setActiveTab(targetTab);
+        }}
+      />
+    );
+  }
 
   const renderContent = () => {
     switch (activeTab) {

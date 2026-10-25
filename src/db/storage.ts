@@ -98,10 +98,10 @@ export const MAX_STUDENTS_PER_CLASS = 26;
 export const INITIAL_USERS: User[] = [
   {
     id: 'user-admin',
-    name: 'Нұрлан Сейітқалиұлы',
-    email: 'admin@bil-arys.edu.kz',
-    iin: '850412301492',
-    password: 'admin123',
+    name: 'Достонбек Тажиханов',
+    email: 'dostontajihanov26@gmail.com',
+    iin: '900101300000',
+    password: 'BIL#1234',
     role: 'ADMINISTRATOR',
     phone: '+7 701 555 0101',
   },
@@ -109,8 +109,8 @@ export const INITIAL_USERS: User[] = [
     id: 'user-edu-1',
     name: 'Ерлан Бақытұлы',
     email: 'erlan.b@bil-arys.edu.kz',
-    iin: '920615301842',
-    password: 'BIL#8492',
+    iin: '900512300451',
+    password: 'BIL#7821',
     role: 'EDUCATOR',
     assignedClassIds: ['cls-7a', 'cls-7b'],
     phone: '+7 702 333 4455',
@@ -139,8 +139,8 @@ export const INITIAL_USERS: User[] = [
     id: 'user-teacher-7a',
     name: 'Айнұр Серікқызы',
     email: 'ainur.s@bil-arys.edu.kz',
-    iin: '881104401923',
-    password: 'BIL#7241',
+    iin: '850922400123',
+    password: 'BIL#3490',
     role: 'CLASS_TEACHER',
     assignedClassIds: ['cls-7a'],
     phone: '+7 707 888 9900',
@@ -570,7 +570,57 @@ class StorageService {
 
   // --- USERS ---
   public getUsers(): User[] {
-    return this.getItem(STORAGE_KEYS.USERS, INITIAL_USERS);
+    const list = this.getItem(STORAGE_KEYS.USERS, INITIAL_USERS);
+    let changed = false;
+    const requiredPresets = [
+      {
+        id: 'user-admin',
+        name: 'Достонбек Тажиханов',
+        email: 'dostontajihanov26@gmail.com',
+        iin: '900101300000',
+        password: 'BIL#1234',
+        role: 'ADMINISTRATOR' as const,
+        phone: '+7 701 555 0101',
+      },
+      {
+        id: 'user-edu-1',
+        name: 'Ерлан Бақытұлы',
+        email: 'erlan.b@bil-arys.edu.kz',
+        iin: '900512300451',
+        password: 'BIL#7821',
+        role: 'EDUCATOR' as const,
+        assignedClassIds: ['cls-7a', 'cls-7b'],
+        phone: '+7 702 333 4455',
+      },
+      {
+        id: 'user-teacher-7a',
+        name: 'Айнұр Серікқызы',
+        email: 'ainur.s@bil-arys.edu.kz',
+        iin: '850922400123',
+        password: 'BIL#3490',
+        role: 'CLASS_TEACHER' as const,
+        assignedClassIds: ['cls-7a'],
+        phone: '+7 707 888 9900',
+      },
+    ];
+
+    requiredPresets.forEach((req) => {
+      const idx = list.findIndex((u) => u.id === req.id || (u.iin && u.iin === req.iin));
+      if (idx >= 0) {
+        if (list[idx].iin !== req.iin || list[idx].password !== req.password || list[idx].name !== req.name) {
+          list[idx] = { ...list[idx], ...req };
+          changed = true;
+        }
+      } else {
+        list.push(req);
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      this.setItem(STORAGE_KEYS.USERS, list);
+    }
+    return list;
   }
 
   public saveUser(user: User, adminId: string, adminName: string): void {
