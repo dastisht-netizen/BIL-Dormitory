@@ -13,6 +13,7 @@ import {
   User,
   WeekendMealRecord,
   NotificationSettings,
+  SiteConfig,
 } from '../types';
 
 const STORAGE_KEYS = {
@@ -29,6 +30,21 @@ const STORAGE_KEYS = {
   DORMITORY: 'bil_dormitory_v1',
   AUDIT: 'bil_audit_v1',
   SETTINGS: 'bil_settings_v1',
+  SITE_CONFIG: 'bil_site_config_v1',
+};
+
+export const INITIAL_SITE_CONFIG: SiteConfig = {
+  schoolName: 'ARYS BIL SCHOOL',
+  appTitle: 'ARYS BIL STUDY TRACKER',
+  subtitle: 'Арыс БИЛ мектеп-интернатының оқу және жатақхана жүйесі',
+  directorName: 'Нұрлан Сейітқалиұлы',
+  contactPhone: '+7 701 555 0101',
+  contactEmail: 'admin@bil-arys.edu.kz',
+  studyStartTime: '19:00',
+  studyEndTime: '21:00',
+  schoolAddress: 'Түркістан облысы, Арыс қаласы, Білім көшесі, 1',
+  announcement: 'Құрметті оқушылар мен тәрбиешілер! Кешкі өзіндік дайындық сағат 19:00-де басталады.',
+  announcementActive: true,
 };
 
 // Initial Subjects
@@ -82,6 +98,7 @@ export const INITIAL_USERS: User[] = [
     id: 'user-admin',
     name: 'Нұрлан Сейітқалиұлы',
     email: 'admin@bil-arys.edu.kz',
+    password: 'admin123',
     role: 'ADMINISTRATOR',
     phone: '+7 701 555 0101',
   },
@@ -89,6 +106,7 @@ export const INITIAL_USERS: User[] = [
     id: 'user-edu-1',
     name: 'Ерлан Бақытұлы',
     email: 'erlan.b@bil-arys.edu.kz',
+    password: 'edu123',
     role: 'EDUCATOR',
     assignedClassIds: ['cls-7a', 'cls-7b'],
     phone: '+7 702 333 4455',
@@ -97,6 +115,7 @@ export const INITIAL_USERS: User[] = [
     id: 'user-edu-2',
     name: 'Дәулет Мұратұлы',
     email: 'daulet.m@bil-arys.edu.kz',
+    password: 'edu123',
     role: 'EDUCATOR',
     assignedClassIds: ['cls-8a', 'cls-8b'],
     phone: '+7 705 444 6677',
@@ -105,6 +124,7 @@ export const INITIAL_USERS: User[] = [
     id: 'user-teacher-7a',
     name: 'Айнұр Серікқызы',
     email: 'ainur.s@bil-arys.edu.kz',
+    password: 'teacher123',
     role: 'CLASS_TEACHER',
     assignedClassIds: ['cls-7a'],
     phone: '+7 707 888 9900',
@@ -113,6 +133,7 @@ export const INITIAL_USERS: User[] = [
     id: 'user-teacher-8a',
     name: 'Гүлнәр Асқарқызы',
     email: 'gulnar.a@bil-arys.edu.kz',
+    password: 'teacher123',
     role: 'CLASS_TEACHER',
     assignedClassIds: ['cls-8a'],
     phone: '+7 775 111 2233',
@@ -121,6 +142,7 @@ export const INITIAL_USERS: User[] = [
     id: 'user-cafeteria',
     name: 'Баян Әбдікерімқызы',
     email: 'cafeteria@bil-arys.edu.kz',
+    password: 'cafe123',
     role: 'CAFETERIA_STAFF',
     phone: '+7 778 999 0011',
   },
@@ -285,11 +307,16 @@ class StorageService {
       this.setItem(STORAGE_KEYS.TIMETABLES, INITIAL_TIMETABLES);
       this.setItem(STORAGE_KEYS.STUDENTS, INITIAL_STUDENTS);
       this.setItem(STORAGE_KEYS.SETTINGS, INITIAL_SETTINGS);
+      this.setItem(STORAGE_KEYS.SITE_CONFIG, INITIAL_SITE_CONFIG);
       this.setItem(STORAGE_KEYS.AUDIT, INITIAL_AUDIT_LOGS);
 
       // Seed initial attendance & homework for demonstration
       this.seedInitialDailyRecords();
       this.seedInitialWeekendRecords();
+    }
+    // ensure site config exists even if upgraded
+    if (!localStorage.getItem(STORAGE_KEYS.SITE_CONFIG)) {
+      this.setItem(STORAGE_KEYS.SITE_CONFIG, INITIAL_SITE_CONFIG);
     }
   }
 
@@ -415,6 +442,7 @@ class StorageService {
     localStorage.removeItem(STORAGE_KEYS.DORMITORY);
     localStorage.removeItem(STORAGE_KEYS.AUDIT);
     localStorage.removeItem(STORAGE_KEYS.SETTINGS);
+    localStorage.removeItem(STORAGE_KEYS.SITE_CONFIG);
     this.initDatabase();
   }
 
@@ -574,6 +602,21 @@ class StorageService {
       entityType: 'system',
       newValue: subject.nameKk,
       timestamp: new Date().toISOString(),
+    });
+  }
+
+  public deleteSubject(subjectId: string, userId: string, userName: string): void {
+    const subjects = this.getSubjects().filter((s) => s.id !== subjectId);
+    this.setItem(STORAGE_KEYS.SUBJECTS, subjects);
+    this.addAuditLog({
+      userId,
+      userName,
+      userRole: 'ADMINISTRATOR',
+      action: 'DELETE_SUBJECT',
+      entityType: 'system',
+      entityId: subjectId,
+      timestamp: new Date().toISOString(),
+      details: 'Пән жүйеден өшірілді',
     });
   }
 
@@ -1019,11 +1062,31 @@ class StorageService {
     });
   }
 
+  // --- SITE CONFIG & SCHOOL CUSTOMIZATION ---
+  public getSiteConfig(): SiteConfig {
+    return this.getItem(STORAGE_KEYS.SITE_CONFIG, INITIAL_SITE_CONFIG);
+  }
+
+  public saveSiteConfig(config: SiteConfig, user: User): void {
+    this.setItem(STORAGE_KEYS.SITE_CONFIG, config);
+    this.addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      userRole: user.role,
+      action: 'UPDATE_SITE_CONFIG',
+      entityType: 'system',
+      newValue: config.schoolName,
+      timestamp: new Date().toISOString(),
+      details: `Мектеп атауы және сайт баптаулары өзгертілді: ${config.schoolName}`,
+    });
+  }
+
   // Export full JSON backup
   public exportBackup(): string {
     const dump = {
       version: '1.0',
       exportedAt: new Date().toISOString(),
+      siteConfig: this.getSiteConfig(),
       years: this.getAcademicYears(),
       classes: this.getClasses(),
       users: this.getUsers(),
@@ -1045,6 +1108,7 @@ class StorageService {
   public importBackup(jsonString: string): boolean {
     try {
       const data = JSON.parse(jsonString);
+      if (data.siteConfig) this.setItem(STORAGE_KEYS.SITE_CONFIG, data.siteConfig);
       if (data.years) this.setItem(STORAGE_KEYS.YEARS, data.years);
       if (data.classes) this.setItem(STORAGE_KEYS.CLASSES, data.classes);
       if (data.users) this.setItem(STORAGE_KEYS.USERS, data.users);

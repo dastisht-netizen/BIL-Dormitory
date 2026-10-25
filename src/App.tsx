@@ -88,7 +88,7 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-[#F8FAF9] flex flex-col text-[#24342D]">
       {/* Top Header */}
-      <Header />
+      <Header onOpenAdmin={() => setActiveTab('settings')} />
 
       {/* Main Workspace */}
       <div className="flex-1 flex max-w-7xl w-full mx-auto pb-20 md:pb-8">

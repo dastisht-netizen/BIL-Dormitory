@@ -47,7 +47,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
-  const { currentUser, isAdmin, isEducator, isClassTeacher, isCafeteria } = useAuth();
+  const { currentUser, isAdmin, isEducator, isClassTeacher, isCafeteria, siteConfig } = useAuth();
   const { t } = useLanguage();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
@@ -166,10 +166,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
           <div className="p-3 rounded-2xl bg-[#FFF8E7] border border-[#FFE9A8]/70">
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-[#075C42]" />
-              <span className="text-xs font-bold text-[#075C42]">ARYS BIL SCHOOL</span>
+              <span className="text-xs font-bold text-[#075C42] truncate">{siteConfig.schoolName}</span>
             </div>
-            <p className="text-[11px] text-[#24342D]/80 mt-1 leading-relaxed">
-              Кешкі дайындық, үй тапсырмасы және жатақхана мониторингі
+            <p className="text-[11px] text-[#24342D]/80 mt-1 leading-relaxed line-clamp-2">
+              {siteConfig.subtitle}
             </p>
           </div>
         </div>

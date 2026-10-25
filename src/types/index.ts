@@ -10,10 +10,25 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  password?: string;
   role: Role;
   assignedClassIds?: string[]; // Classes this user is responsible for
   phone?: string;
   avatarUrl?: string;
+}
+
+export interface SiteConfig {
+  schoolName: string;
+  appTitle: string;
+  subtitle: string;
+  directorName: string;
+  contactPhone: string;
+  contactEmail: string;
+  studyStartTime: string;
+  studyEndTime: string;
+  schoolAddress: string;
+  announcement: string;
+  announcementActive: boolean;
 }
 
 export interface AcademicYear {
