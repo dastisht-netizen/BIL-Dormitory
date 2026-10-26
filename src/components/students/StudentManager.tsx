@@ -202,7 +202,17 @@ export const StudentManager: React.FC = () => {
             Оқушыларды басқару жүйесі
           </h2>
           <p className="text-xs text-gray-500 mt-1">
-            Бірегей ID, жеке карточкалар, сынып шегі (максимум 26 оқушы)
+            {isAdmin ? (
+              'Барлық сыныптар контингенті • Жеке карточкалар, шек: максимум 26 оқушы'
+            ) : (
+              <span>
+                Қызметкер: <strong className="text-[#075C42]">{currentUser.name}</strong> • Бекітілген:{' '}
+                <strong className="text-[#4338CA]">
+                  {allowedClasses.map((c) => `${c.name} сыныбы`).join(', ') || 'Сынып'}
+                </strong>{' '}
+                (максимум 26 оқушы)
+              </span>
+            )}
           </p>
         </div>
 

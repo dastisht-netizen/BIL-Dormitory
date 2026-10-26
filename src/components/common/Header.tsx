@@ -84,6 +84,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin, activeTab = 'dashbo
   const currentRoleInfo = roleLabels[currentUser.role] || roleLabels.ADMINISTRATOR;
   const RoleIcon = currentRoleInfo.icon;
 
+  const assignedClassLabel = React.useMemo(() => {
+    if (currentUser.role === 'ADMINISTRATOR') return 'Бас әкімші';
+    const classes = storage.getClasses();
+    const matched = classes.find(
+      (c) =>
+        currentUser.assignedClassIds?.includes(c.id) ||
+        c.educatorId === currentUser.id ||
+        c.classTeacherId === currentUser.id
+    );
+    return matched?.name ? `${matched.name}` : '';
+  }, [currentUser]);
+
   const languages: { code: Language; name: string; flag: string }[] = [
     { code: 'kk', name: 'Қазақша', flag: '🇰🇿' },
     { code: 'ru', name: 'Русский', flag: '🇷🇺' },
@@ -117,13 +129,19 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin, activeTab = 'dashbo
         onOpenAdmin();
       }
     } else if (roleKey === 'educator') {
-      switchRole('EDUCATOR', 'cls-7a');
+      if (isAdmin) {
+        switchRole('EDUCATOR', 'cls-7a');
+      }
       if (onSelectTab) onSelectTab('self_study');
     } else if (roleKey === 'teacher') {
-      switchRole('CLASS_TEACHER', 'cls-7a');
-      if (onSelectTab) onSelectTab('students');
+      if (isAdmin) {
+        switchRole('CLASS_TEACHER', 'cls-7a');
+      }
+      if (onSelectTab) onSelectTab('dashboard');
     } else if (roleKey === 'cafeteria') {
-      switchRole('CAFETERIA_STAFF');
+      if (isAdmin) {
+        switchRole('CAFETERIA_STAFF');
+      }
       if (onSelectTab) onSelectTab('meals');
     }
   };
@@ -301,24 +319,35 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin, activeTab = 'dashbo
               {/* User profile & Role Modal Trigger */}
               <button
                 onClick={() => setShowRoleModal(true)}
-                className="flex items-center gap-2 pl-2 pr-3 py-1 rounded-xl bg-[#1E293B] border border-slate-700 hover:border-slate-500 transition text-left"
+                className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl bg-[#1E293B] border border-slate-700 hover:border-slate-500 transition text-left cursor-pointer"
+                title={`${currentUser.name} (${assignedClassLabel ? `${assignedClassLabel} • ` : ''}${currentRoleInfo.title})`}
               >
                 <div
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 shadow-xs ${
-                    isAdmin ? 'bg-amber-500 text-slate-950 font-black' : 'bg-emerald-600 text-white'
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 shadow-xs ${
+                    isAdmin
+                      ? 'bg-amber-500 text-slate-950 font-black'
+                      : isEducator
+                      ? 'bg-emerald-600 text-white'
+                      : isClassTeacher
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-indigo-600 text-white'
                   }`}
                 >
                   {currentUser.name.charAt(0)}
                 </div>
-                <div className="hidden md:block text-left">
-                  <div className="text-xs font-bold text-slate-100 max-w-[110px] truncate leading-tight">
+                <div className="text-left">
+                  <div className="text-xs font-black text-slate-100 max-w-[150px] sm:max-w-[200px] truncate leading-tight">
                     {currentUser.name}
                   </div>
-                  <div className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                  <div className="text-[10px] font-bold text-slate-400 flex items-center gap-1 leading-tight mt-0.5">
+                    {assignedClassLabel && (
+                      <span className="text-emerald-400 font-extrabold">{assignedClassLabel}</span>
+                    )}
+                    {assignedClassLabel && <span>•</span>}
                     <span>{currentRoleInfo.title}</span>
                   </div>
                 </div>
-                <ChevronDown className="w-3 h-3 text-slate-400" />
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
               </button>
 
               {/* Password Change Button */}
@@ -514,7 +543,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin, activeTab = 'dashbo
                 {storage.getUsers().filter((u) => u.id !== 'user-admin').map((u) => {
                   const isCurrent = currentUser.id === u.id;
                   const roleTitle = u.role === 'EDUCATOR' ? 'Тәрбиеші' : u.role === 'CLASS_TEACHER' ? 'Сынып жетекшісі' : u.role;
-                  const assigned = u.assignedClassIds && u.assignedClassIds.length > 0 ? u.assignedClassIds.join(', ') : 'Сынып тағайындалмаған';
+                  const classNames = storage
+                    .getClasses()
+                    .filter((c) => u.assignedClassIds?.includes(c.id) || c.educatorId === u.id || c.classTeacherId === u.id)
+                    .map((c) => `${c.name} сыныбы`)
+                    .join(', ');
+                  const assigned = classNames || 'Сынып тағайындалмаған';
                   return (
                     <button
                       key={u.id}

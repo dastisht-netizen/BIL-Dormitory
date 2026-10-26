@@ -17,20 +17,20 @@ import {
 } from '../types';
 
 const STORAGE_KEYS = {
-  USERS: 'bil_users_v2',
-  YEARS: 'bil_years_v2',
-  CLASSES: 'bil_classes_v2',
-  SUBJECTS: 'bil_subjects_v2',
-  TIMETABLES: 'bil_timetables_v2',
-  STUDENTS: 'bil_students_v2',
-  SESSIONS: 'bil_sessions_v2',
-  ATTENDANCE: 'bil_attendance_v2',
-  HOMEWORK: 'bil_homework_v2',
-  MEALS: 'bil_meals_v2',
-  DORMITORY: 'bil_dormitory_v2',
-  AUDIT: 'bil_audit_v2',
-  SETTINGS: 'bil_settings_v2',
-  SITE_CONFIG: 'bil_site_config_v2',
+  USERS: 'bil_users_v3',
+  YEARS: 'bil_years_v3',
+  CLASSES: 'bil_classes_v3',
+  SUBJECTS: 'bil_subjects_v3',
+  TIMETABLES: 'bil_timetables_v3',
+  STUDENTS: 'bil_students_v3',
+  SESSIONS: 'bil_sessions_v3',
+  ATTENDANCE: 'bil_attendance_v3',
+  HOMEWORK: 'bil_homework_v3',
+  MEALS: 'bil_meals_v3',
+  DORMITORY: 'bil_dormitory_v3',
+  AUDIT: 'bil_audit_v3',
+  SETTINGS: 'bil_settings_v3',
+  SITE_CONFIG: 'bil_site_config_v3',
 };
 
 export const INITIAL_SITE_CONFIG: SiteConfig = {
@@ -94,8 +94,9 @@ export const INITIAL_YEARS: AcademicYear[] = [
 
 export const MAX_STUDENTS_PER_CLASS = 26;
 
-// Initial Users (Таза база: тек Жатақхана меңгерушісі / Бас әкімші)
+// Initial Users: Ресми бекітілген тәрбиешілер мен сынып жетекшілер
 export const INITIAL_USERS: User[] = [
+  // 1. Бас әкімші / Жатақхана меңгерушісі
   {
     id: 'user-admin',
     name: 'Достонбек Тажиханов',
@@ -105,17 +106,171 @@ export const INITIAL_USERS: User[] = [
     role: 'ADMINISTRATOR',
     phone: '+7 701 555 0101',
   },
+
+  // 2. 7A сыныбы
+  {
+    id: 'user-edu-7a',
+    name: 'Ерлан Бақытұлы',
+    email: 'erlan.b@bil-arys.edu.kz',
+    iin: '910214300701',
+    password: 'BIL#7011',
+    role: 'EDUCATOR',
+    assignedClassIds: ['cls-7a'],
+    phone: '+7 702 111 7001',
+  },
+  {
+    id: 'user-teacher-7a',
+    name: 'Айнұр Серікқызы',
+    email: 'ainur.s@bil-arys.edu.kz',
+    iin: '890520400702',
+    password: 'BIL#7012',
+    role: 'CLASS_TEACHER',
+    assignedClassIds: ['cls-7a'],
+    phone: '+7 705 222 7002',
+  },
+
+  // 3. 7B сыныбы
+  {
+    id: 'user-edu-7b',
+    name: 'Нұрсұлтан Әлімханұлы',
+    email: 'nursultan.a@bil-arys.edu.kz',
+    iin: '920311300703',
+    password: 'BIL#7021',
+    role: 'EDUCATOR',
+    assignedClassIds: ['cls-7b'],
+    phone: '+7 701 333 7003',
+  },
+  {
+    id: 'user-teacher-7b',
+    name: 'Гүлнар Дәулетқызы',
+    email: 'gulnar.d@bil-arys.edu.kz',
+    iin: '880719400704',
+    password: 'BIL#7022',
+    role: 'CLASS_TEACHER',
+    assignedClassIds: ['cls-7b'],
+    phone: '+7 707 444 7004',
+  },
+
+  // 4. 8A сыныбы
+  {
+    id: 'user-edu-8a',
+    name: 'Дәурен Қанатұлы',
+    email: 'dauren.k@bil-arys.edu.kz',
+    iin: '930415300801',
+    password: 'BIL#8011',
+    role: 'EDUCATOR',
+    assignedClassIds: ['cls-8a'],
+    phone: '+7 702 555 8001',
+  },
+  {
+    id: 'user-teacher-8a',
+    name: 'Меруерт Болатқызы',
+    email: 'meruert.b@bil-arys.edu.kz',
+    iin: '900823400802',
+    password: 'BIL#8012',
+    role: 'CLASS_TEACHER',
+    assignedClassIds: ['cls-8a'],
+    phone: '+7 708 666 8002',
+  },
+
+  // 5. 8B сыныбы
+  {
+    id: 'user-edu-8b',
+    name: 'Бауыржан Саматұлы',
+    email: 'bauyrzhan.s@bil-arys.edu.kz',
+    iin: '940618300803',
+    password: 'BIL#8021',
+    role: 'EDUCATOR',
+    assignedClassIds: ['cls-8b'],
+    phone: '+7 701 777 8003',
+  },
+  {
+    id: 'user-teacher-8b',
+    name: 'Динара Асқарқызы',
+    email: 'dinara.a@bil-arys.edu.kz',
+    iin: '910912400804',
+    password: 'BIL#8022',
+    role: 'CLASS_TEACHER',
+    assignedClassIds: ['cls-8b'],
+    phone: '+7 707 888 8004',
+  },
+
+  // 6. 9A сыныбы
+  {
+    id: 'user-edu-9a',
+    name: 'Мақсат Жақсылықұлы',
+    email: 'maqsat.zh@bil-arys.edu.kz',
+    iin: '950117300901',
+    password: 'BIL#9011',
+    role: 'EDUCATOR',
+    assignedClassIds: ['cls-9a'],
+    phone: '+7 702 999 9001',
+  },
+  {
+    id: 'user-teacher-9a',
+    name: 'Жадыра Мұратқызы',
+    email: 'zhadyra.m@bil-arys.edu.kz',
+    iin: '921105400902',
+    password: 'BIL#9012',
+    role: 'CLASS_TEACHER',
+    assignedClassIds: ['cls-9a'],
+    phone: '+7 705 111 9002',
+  },
+
+  // 7. 10A сыныбы
+  {
+    id: 'user-edu-10a',
+    name: 'Азамат Қайратұлы',
+    email: 'azamat.q@bil-arys.edu.kz',
+    iin: '930822301001',
+    password: 'BIL#1001',
+    role: 'EDUCATOR',
+    assignedClassIds: ['cls-10a'],
+    phone: '+7 701 222 1001',
+  },
+  {
+    id: 'user-teacher-10a',
+    name: 'Самал Төлегенқызы',
+    email: 'samal.t@bil-arys.edu.kz',
+    iin: '891230401002',
+    password: 'BIL#1002',
+    role: 'CLASS_TEACHER',
+    assignedClassIds: ['cls-10a'],
+    phone: '+7 708 333 1002',
+  },
+
+  // 8. 11A сыныбы
+  {
+    id: 'user-edu-11a',
+    name: 'Бекзат Оразбекұлы',
+    email: 'bekzat.o@bil-arys.edu.kz',
+    iin: '920409301101',
+    password: 'BIL#1101',
+    role: 'EDUCATOR',
+    assignedClassIds: ['cls-11a'],
+    phone: '+7 702 444 1101',
+  },
+  {
+    id: 'user-teacher-11a',
+    name: 'Әсел Ғабитқызы',
+    email: 'asel.g@bil-arys.edu.kz',
+    iin: '880315401102',
+    password: 'BIL#1102',
+    role: 'CLASS_TEACHER',
+    assignedClassIds: ['cls-11a'],
+    phone: '+7 707 555 1102',
+  },
 ];
 
-// Initial Classes (Қызметкерлерді жатақхана меңгерушісі бекітеді)
+// Initial Classes (Әр сыныпқа нақты тәрбиеші мен сынып жетекші бекітілген)
 export const INITIAL_CLASSES: SchoolClass[] = [
-  { id: 'cls-7a', name: '7A', grade: 7, academicYearId: 'ay-2026-2027' },
-  { id: 'cls-7b', name: '7B', grade: 7, academicYearId: 'ay-2026-2027' },
-  { id: 'cls-8a', name: '8A', grade: 8, academicYearId: 'ay-2026-2027' },
-  { id: 'cls-8b', name: '8B', grade: 8, academicYearId: 'ay-2026-2027' },
-  { id: 'cls-9a', name: '9A', grade: 9, academicYearId: 'ay-2026-2027' },
-  { id: 'cls-10a', name: '10A', grade: 10, academicYearId: 'ay-2026-2027' },
-  { id: 'cls-11a', name: '11A', grade: 11, academicYearId: 'ay-2026-2027' },
+  { id: 'cls-7a', name: '7A', grade: 7, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-7a', classTeacherId: 'user-teacher-7a' },
+  { id: 'cls-7b', name: '7B', grade: 7, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-7b', classTeacherId: 'user-teacher-7b' },
+  { id: 'cls-8a', name: '8A', grade: 8, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-8a', classTeacherId: 'user-teacher-8a' },
+  { id: 'cls-8b', name: '8B', grade: 8, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-8b', classTeacherId: 'user-teacher-8b' },
+  { id: 'cls-9a', name: '9A', grade: 9, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-9a', classTeacherId: 'user-teacher-9a' },
+  { id: 'cls-10a', name: '10A', grade: 10, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-10a', classTeacherId: 'user-teacher-10a' },
+  { id: 'cls-11a', name: '11A', grade: 11, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-11a', classTeacherId: 'user-teacher-11a' },
 ];
 
 // Initial Students (Таза база: алдын ала енгізілген оқушы жоқ, 0 оқушы)
@@ -373,7 +528,30 @@ class StorageService {
 
   // --- CLASSES ---
   public getClasses(): SchoolClass[] {
-    return this.getItem(STORAGE_KEYS.CLASSES, INITIAL_CLASSES);
+    const list = this.getItem(STORAGE_KEYS.CLASSES, INITIAL_CLASSES);
+    let changed = false;
+
+    INITIAL_CLASSES.forEach((defaultClass) => {
+      const idx = list.findIndex((c) => c.id === defaultClass.id);
+      if (idx === -1) {
+        list.push(defaultClass);
+        changed = true;
+      } else {
+        if (!list[idx].educatorId || !list[idx].classTeacherId) {
+          list[idx] = {
+            ...list[idx],
+            educatorId: list[idx].educatorId || defaultClass.educatorId,
+            classTeacherId: list[idx].classTeacherId || defaultClass.classTeacherId,
+          };
+          changed = true;
+        }
+      }
+    });
+
+    if (changed) {
+      this.setItem(STORAGE_KEYS.CLASSES, list);
+    }
+    return list;
   }
 
   public saveClass(cls: SchoolClass, userId: string, userName: string): void {
@@ -401,22 +579,14 @@ class StorageService {
   public getUsers(): User[] {
     const list = this.getItem(STORAGE_KEYS.USERS, INITIAL_USERS);
     let changed = false;
-    // Тек жатақхана меңгерушісі (Достонбек Тажиханов) бастапқы міндетті әкімші болып сақталады
-    const masterAdmin: User = {
-      id: 'user-admin',
-      name: 'Достонбек Тажиханов',
-      email: 'dostontajihanov26@gmail.com',
-      iin: '900101300000',
-      password: 'BIL#1234',
-      role: 'ADMINISTRATOR',
-      phone: '+7 701 555 0101',
-    };
 
-    const idx = list.findIndex((u) => u.id === masterAdmin.id || (u.iin && u.iin === masterAdmin.iin));
-    if (idx === -1) {
-      list.unshift(masterAdmin);
-      changed = true;
-    }
+    INITIAL_USERS.forEach((defaultUser) => {
+      const idx = list.findIndex((u) => u.id === defaultUser.id || (u.iin && u.iin === defaultUser.iin));
+      if (idx === -1) {
+        list.push(defaultUser);
+        changed = true;
+      }
+    });
 
     if (changed) {
       this.setItem(STORAGE_KEYS.USERS, list);

@@ -424,13 +424,13 @@ export const EducatorDashboard: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-[#138A62]">
             <Moon className="w-4 h-4" />
-            <span>{t.selfStudySchedule}</span>
+            <span>Тәрбиеші кабинеті • {classes.find((c) => c.id === selectedClassId)?.name || ''} сыныбы</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-[#075C42] mt-1">
-            Кешкі өзіндік дайындық модулі
+            Қош келдіңіз, {currentUser.name}!
           </h2>
           <p className="text-xs text-gray-500 mt-1">
-            Тәрбиешінің күнделікті 3-қадамдық тексеру және бақылау жүйесі
+            Сізге бекітілген: <span className="font-bold text-[#075C42]">{classes.find((c) => c.id === selectedClassId)?.name || 'Сынып'}</span> • Кешкі өзіндік дайындық және оқушыларды бақылау
           </p>
         </div>
 

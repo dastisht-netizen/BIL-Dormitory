@@ -13,12 +13,15 @@ import {
   Sparkles,
   Lock,
   UserCheck,
-  ArrowRight
+  ArrowRight,
+  Copy,
+  Check,
+  List
 } from 'lucide-react';
 import { BilLogo } from '../common/BilLogo';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../i18n/LanguageContext';
-import { Language, Role, User } from '../../types';
+import { Language, Role, SchoolClass, User } from '../../types';
 import { NavTab } from '../common/Sidebar';
 import { storage } from '../../db/storage';
 
@@ -30,15 +33,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const { login } = useAuth();
   const { language, setLanguage, t } = useLanguage();
 
-  const [registeredStaff, setRegisteredStaff] = useState<User[]>(() => {
-    return storage.getUsers().filter((u) => u.id !== 'user-admin');
-  });
+  const [classesList] = useState<SchoolClass[]>(() => storage.getClasses());
+  const [usersList] = useState<User[]>(() => storage.getUsers());
+  const [selectedClassTab, setSelectedClassTab] = useState<string>('cls-7a');
+  const [showAllCredentialsModal, setShowAllCredentialsModal] = useState<boolean>(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const [iin, setIin] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const copyText = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
 
   const languages: { code: Language; name: string; flag: string }[] = [
     { code: 'kk', name: 'Қазақша', flag: '🇰🇿' },
@@ -243,29 +254,29 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           </div>
         </div>
 
-        {/* Right Column: Master Admin & Registration Workflow */}
+        {/* Right Column: Master Admin & Class Accounts */}
         <div className="lg:col-span-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-amber-400" />
               <h3 className="text-sm font-extrabold text-white">
-                Бас әкімші (Master Admin) аккаунты
+                Ресми аккаунттар (Логин & Парольдер)
               </h3>
             </div>
-            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full border border-emerald-400/20">
-              Таза база (Zero data)
-            </span>
+            <button
+              onClick={() => setShowAllCredentialsModal(true)}
+              className="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 bg-indigo-500/10 px-2.5 py-1 rounded-xl border border-indigo-500/20 transition cursor-pointer"
+            >
+              <List className="w-3.5 h-3.5" />
+              <span>Барлық тізім</span>
+            </button>
           </div>
-
-          <p className="text-xs text-slate-400">
-            Жүйеде алдын ала жүктелген жасанды оқушылар немесе мұғалімдер жоқ. Төмендегі ресми әкімшімен кіріп, қызметкерлер мен оқушыларды тіркеңіз:
-          </p>
 
           <div className="space-y-3">
             {/* Primary Master Admin: Dostonbek Tajihanov */}
             <button
               onClick={() => handleQuickFill('900101300000', 'BIL#1234')}
-              className="w-full p-4 rounded-2xl bg-gradient-to-r from-[#1E293B] to-[#1E1B4B] hover:from-[#1E293B] hover:to-[#312E81] border-2 border-amber-500/40 hover:border-amber-400 text-left transition group shadow-xl"
+              className="w-full p-4 rounded-2xl bg-gradient-to-r from-[#1E293B] to-[#1E1B4B] hover:from-[#1E293B] hover:to-[#312E81] border-2 border-amber-500/40 hover:border-amber-400 text-left transition group shadow-xl cursor-pointer"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -291,73 +302,286 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   <ArrowRight className="w-3.5 h-3.5" />
                 </div>
               </div>
-              <p className="text-[11px] text-slate-400 mt-2.5 pl-14">
-                Эксклюзивті құқық: Тәрбиешілер мен мұғалімдерді ЖСН арқылы тіркеу, автоматты BIL# құпиясөз жасау, сынып бекіту және базаны басқару.
-              </p>
             </button>
 
-            {/* If Manager has registered staff in this browser session, show them here */}
-            {registeredStaff.length > 0 ? (
-              <div className="p-4 rounded-2xl bg-[#1E293B]/80 border border-indigo-500/30 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
-                    <UserCheck className="w-4 h-4 text-emerald-400" />
-                    Меңгеруші тіркеген қызметкерлер ({registeredStaff.length}):
-                  </span>
-                  <span className="text-[10px] text-slate-400">1-басумен кіру</span>
-                </div>
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {registeredStaff.map((staff) => (
-                    <button
-                      key={staff.id}
-                      onClick={() => handleQuickFill(staff.iin || '', staff.password || '')}
-                      className="w-full p-2.5 rounded-xl bg-slate-900/60 hover:bg-slate-900 border border-slate-700 hover:border-indigo-400 text-left transition flex items-center justify-between text-xs"
-                    >
-                      <div>
-                        <div className="font-bold text-white flex items-center gap-1.5">
-                          <span>{staff.name}</span>
-                          <span className="text-[10px] text-slate-400 font-normal">
-                            ({staff.role === 'EDUCATOR' ? 'Тәрбиеші' : staff.role === 'CLASS_TEACHER' ? 'Сынып жетекшісі' : staff.role})
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                          ЖСН: <span className="text-emerald-300">{staff.iin}</span> • Пароль: <span className="text-slate-300">{staff.password}</span>
-                        </div>
-                      </div>
-                      <ArrowRight className="w-3.5 h-3.5 text-indigo-400" />
-                    </button>
-                  ))}
-                </div>
+            {/* Class Accounts Selector Card */}
+            <div className="p-4 sm:p-5 rounded-3xl bg-[#1E293B]/90 border border-slate-700/80 shadow-2xl space-y-3.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <GraduationCap className="w-4 h-4 text-emerald-400" />
+                  Сыныпты таңдаңыз (Тәрбиеші & Сынып жетекші):
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">7 сынып</span>
               </div>
-            ) : null}
 
-            {/* Official BIL Security & Workflow Info Card */}
-            <div className="p-4 rounded-2xl bg-[#1E293B]/60 border border-slate-700/80 space-y-2.5 text-xs text-slate-300">
-              <div className="flex items-center gap-2 text-indigo-400 font-bold">
-                <Lock className="w-4 h-4" />
-                <span>БІЛ жатақхана қауіпсіздік & тіркеу регламенті:</span>
+              {/* Class Tabs */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                {classesList.map((c) => {
+                  const isSelected = selectedClassTab === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelectedClassTab(c.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition shrink-0 cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#4338CA] text-white shadow-md shadow-indigo-600/30'
+                          : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700/80'
+                      }`}
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
               </div>
-              <ul className="space-y-1.5 text-[11px] text-slate-400 pl-4 list-disc">
-                <li>
-                  <strong className="text-slate-200">Таза деректер:</strong> Барлық сыныптар 0 оқушымен басталады.
-                </li>
-                <li>
-                  <strong className="text-slate-200">Қызметкерді тіркеу:</strong> Тек меңгеруші (Достонбек Тажиханов) қызметкердің 12 таңбалы ЖСН енгізіп, автоматты BIL# уақытша құпиясөз береді.
-                </li>
-                <li>
-                  <strong className="text-slate-200">Пароль өзгерту:</strong> Тәрбиеші немесе мұғалім жүйеге кірген соң «Құпиясөзді өзгерту» бөлімінде жеке құпиясөзін орнатады.
-                </li>
-                <li>
-                  <strong className="text-slate-200">Сынып оқшаулау:</strong> Әр тәрбиеші тек өзіне бекітілген сыныпты ғана көре алады және 26 оқушыға дейін тіркейді.
-                </li>
-                <li>
-                  <strong className="text-slate-200">Шығу (Шығу):</strong> «Шығу» батырмасын басқанда сессия толық жабылып, оқушылар мәліметі экраннан бірден жойылады.
-                </li>
-              </ul>
+
+              {/* Active Class Staff Cards */}
+              {(() => {
+                const currentCls = classesList.find((c) => c.id === selectedClassTab) || classesList[0];
+                const edu = usersList.find(
+                  (u) =>
+                    u.role === 'EDUCATOR' &&
+                    (u.assignedClassIds?.includes(currentCls.id) || u.id === currentCls.educatorId)
+                );
+                const teacher = usersList.find(
+                  (u) =>
+                    u.role === 'CLASS_TEACHER' &&
+                    (u.assignedClassIds?.includes(currentCls.id) || u.id === currentCls.classTeacherId)
+                );
+
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    {/* Educator Card */}
+                    <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-emerald-500/30 space-y-2.5 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            {currentCls.name} Тәрбиешісі
+                          </span>
+                          <BookOpen className="w-4 h-4 text-emerald-400" />
+                        </div>
+                        <h4 className="text-xs font-black text-white mt-1.5">
+                          {edu ? edu.name : 'Тәрбиеші бекітілмеген'}
+                        </h4>
+                        {edu && (
+                          <div className="space-y-1 mt-2 text-[11px] font-mono text-slate-300">
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-400">ЖСН:</span>
+                              <div className="flex items-center gap-1">
+                                <span className="font-bold text-emerald-300">{edu.iin}</span>
+                                <button
+                                  onClick={() => copyText(edu.iin || '', `iin-${edu.id}`)}
+                                  className="text-slate-400 hover:text-white"
+                                  title="Көшіру"
+                                >
+                                  {copiedKey === `iin-${edu.id}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-400">Пароль:</span>
+                              <div className="flex items-center gap-1">
+                                <span className="font-bold text-white">{edu.password}</span>
+                                <button
+                                  onClick={() => copyText(edu.password || '', `pass-${edu.id}`)}
+                                  className="text-slate-400 hover:text-white"
+                                  title="Көшіру"
+                                >
+                                  {copiedKey === `pass-${edu.id}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {edu && (
+                        <button
+                          onClick={() => handleQuickFill(edu.iin || '', edu.password || '')}
+                          className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <LogIn className="w-3.5 h-3.5" />
+                          <span>Тәрбиеші болып кіру</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Class Teacher Card */}
+                    <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-blue-500/30 space-y-2.5 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                            {currentCls.name} Сынып жетекшісі
+                          </span>
+                          <GraduationCap className="w-4 h-4 text-blue-400" />
+                        </div>
+                        <h4 className="text-xs font-black text-white mt-1.5">
+                          {teacher ? teacher.name : 'Жетекші бекітілмеген'}
+                        </h4>
+                        {teacher && (
+                          <div className="space-y-1 mt-2 text-[11px] font-mono text-slate-300">
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-400">ЖСН:</span>
+                              <div className="flex items-center gap-1">
+                                <span className="font-bold text-blue-300">{teacher.iin}</span>
+                                <button
+                                  onClick={() => copyText(teacher.iin || '', `iin-${teacher.id}`)}
+                                  className="text-slate-400 hover:text-white"
+                                  title="Көшіру"
+                                >
+                                  {copiedKey === `iin-${teacher.id}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-400">Пароль:</span>
+                              <div className="flex items-center gap-1">
+                                <span className="font-bold text-white">{teacher.password}</span>
+                                <button
+                                  onClick={() => copyText(teacher.password || '', `pass-${teacher.id}`)}
+                                  className="text-slate-400 hover:text-white"
+                                  title="Көшіру"
+                                >
+                                  {copiedKey === `pass-${teacher.id}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {teacher && (
+                        <button
+                          onClick={() => handleQuickFill(teacher.iin || '', teacher.password || '')}
+                          className="w-full py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <LogIn className="w-3.5 h-3.5" />
+                          <span>Жетекші болып кіру</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Official BIL Security Info */}
+            <div className="p-3.5 rounded-2xl bg-[#1E293B]/60 border border-slate-700/80 space-y-1.5 text-xs text-slate-300">
+              <div className="flex items-center gap-1.5 text-indigo-400 font-bold text-xs">
+                <Lock className="w-3.5 h-3.5" />
+                <span>Сынып оқшаулау & Құпиялылық ережесі:</span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Әр тәрбиеші мен сынып жетекші тек өзіне бекітілген сынып оқушыларын көріп, 26 оқушыға дейін тіркеп, өшіре алады. Жүйеге кіргенде әр қызметкердің аты-жөні мен сыныбы жоғарғы мәзірде шығады.
+              </p>
             </div>
           </div>
         </div>
       </div>
+
+      {/* All Accounts Modal */}
+      {showAllCredentialsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-2xl bg-[#1E293B] rounded-3xl p-6 border border-slate-700 shadow-2xl text-left max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-700">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-amber-400" />
+                <div>
+                  <h3 className="text-base font-extrabold text-white">
+                    Барлық сыныптардың логин және құпиясөздері
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Арыс БІЛ 7–11 сынып тәрбиешілері мен сынып жетекшілері
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAllCredentialsModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="overflow-y-auto divide-y divide-slate-800 py-2 space-y-2 flex-1 pr-1">
+              {classesList.map((cls) => {
+                const edu = usersList.find(
+                  (u) =>
+                    u.role === 'EDUCATOR' &&
+                    (u.assignedClassIds?.includes(cls.id) || u.id === cls.educatorId)
+                );
+                const teacher = usersList.find(
+                  (u) =>
+                    u.role === 'CLASS_TEACHER' &&
+                    (u.assignedClassIds?.includes(cls.id) || u.id === cls.classTeacherId)
+                );
+
+                return (
+                  <div key={cls.id} className="pt-3 pb-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2.5 py-0.5 rounded-md bg-[#4338CA] text-white text-xs font-black">
+                        {cls.name} сыныбы
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      {/* Educator */}
+                      {edu && (
+                        <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-700/80 flex items-center justify-between">
+                          <div>
+                            <div className="text-[10px] font-bold text-emerald-400">Тәрбиеші: {edu.name}</div>
+                            <div className="font-mono text-[11px] text-slate-300 mt-0.5">
+                              ЖСН: <span className="text-emerald-300">{edu.iin}</span> • Пароль: {edu.password}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setShowAllCredentialsModal(false);
+                              handleQuickFill(edu.iin || '', edu.password || '');
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition ml-2 shrink-0 cursor-pointer"
+                          >
+                            Кіру
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Teacher */}
+                      {teacher && (
+                        <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-700/80 flex items-center justify-between">
+                          <div>
+                            <div className="text-[10px] font-bold text-blue-400">Жетекші: {teacher.name}</div>
+                            <div className="font-mono text-[11px] text-slate-300 mt-0.5">
+                              ЖСН: <span className="text-blue-300">{teacher.iin}</span> • Пароль: {teacher.password}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setShowAllCredentialsModal(false);
+                              handleQuickFill(teacher.iin || '', teacher.password || '');
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold transition ml-2 shrink-0 cursor-pointer"
+                          >
+                            Кіру
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="pt-3 border-t border-slate-700 flex justify-end">
+              <button
+                onClick={() => setShowAllCredentialsModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 cursor-pointer"
+              >
+                Жабу
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="max-w-6xl w-full mx-auto text-center text-xs text-slate-500 border-t border-slate-800/80 pt-4 z-10 flex flex-col sm:flex-row items-center justify-between gap-2">
