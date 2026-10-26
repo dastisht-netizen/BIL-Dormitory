@@ -10,12 +10,16 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  iin?: string; // 12-digit IIN login (ИИН)
+  iin?: string; // 12-digit IIN login (ЖСН)
   password?: string;
   role: Role;
   assignedClassIds?: string[]; // Classes this user is responsible for
   phone?: string;
   avatarUrl?: string;
+  isActive?: boolean; // true = белсенді, false = уақытша өшірулі
+  status?: 'active' | 'inactive';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface SiteConfig {

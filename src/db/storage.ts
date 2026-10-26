@@ -17,20 +17,20 @@ import {
 } from '../types';
 
 const STORAGE_KEYS = {
-  USERS: 'bil_users_v3',
-  YEARS: 'bil_years_v3',
-  CLASSES: 'bil_classes_v3',
-  SUBJECTS: 'bil_subjects_v3',
-  TIMETABLES: 'bil_timetables_v3',
-  STUDENTS: 'bil_students_v3',
-  SESSIONS: 'bil_sessions_v3',
-  ATTENDANCE: 'bil_attendance_v3',
-  HOMEWORK: 'bil_homework_v3',
-  MEALS: 'bil_meals_v3',
-  DORMITORY: 'bil_dormitory_v3',
-  AUDIT: 'bil_audit_v3',
-  SETTINGS: 'bil_settings_v3',
-  SITE_CONFIG: 'bil_site_config_v3',
+  USERS: 'bil_users_v4',
+  YEARS: 'bil_years_v4',
+  CLASSES: 'bil_classes_v4',
+  SUBJECTS: 'bil_subjects_v4',
+  TIMETABLES: 'bil_timetables_v4',
+  STUDENTS: 'bil_students_v4',
+  SESSIONS: 'bil_sessions_v4',
+  ATTENDANCE: 'bil_attendance_v4',
+  HOMEWORK: 'bil_homework_v4',
+  MEALS: 'bil_meals_v4',
+  DORMITORY: 'bil_dormitory_v4',
+  AUDIT: 'bil_audit_v4',
+  SETTINGS: 'bil_settings_v4',
+  SITE_CONFIG: 'bil_site_config_v4',
 };
 
 export const INITIAL_SITE_CONFIG: SiteConfig = {
@@ -94,9 +94,8 @@ export const INITIAL_YEARS: AcademicYear[] = [
 
 export const MAX_STUDENTS_PER_CLASS = 26;
 
-// Initial Users: Ресми бекітілген тәрбиешілер мен сынып жетекшілер
+// Initial Users: Тек Жатақхана меңгерушісі (Достонбек Тажиханов). Ешқандай жасанды/бот қызметкер жоқ!
 export const INITIAL_USERS: User[] = [
-  // 1. Бас әкімші / Жатақхана меңгерушісі
   {
     id: 'user-admin',
     name: 'Достонбек Тажиханов',
@@ -105,172 +104,20 @@ export const INITIAL_USERS: User[] = [
     password: 'BIL#1234',
     role: 'ADMINISTRATOR',
     phone: '+7 701 555 0101',
-  },
-
-  // 2. 7A сыныбы
-  {
-    id: 'user-edu-7a',
-    name: 'Ерлан Бақытұлы',
-    email: 'erlan.b@bil-arys.edu.kz',
-    iin: '910214300701',
-    password: 'BIL#7011',
-    role: 'EDUCATOR',
-    assignedClassIds: ['cls-7a'],
-    phone: '+7 702 111 7001',
-  },
-  {
-    id: 'user-teacher-7a',
-    name: 'Айнұр Серікқызы',
-    email: 'ainur.s@bil-arys.edu.kz',
-    iin: '890520400702',
-    password: 'BIL#7012',
-    role: 'CLASS_TEACHER',
-    assignedClassIds: ['cls-7a'],
-    phone: '+7 705 222 7002',
-  },
-
-  // 3. 7B сыныбы
-  {
-    id: 'user-edu-7b',
-    name: 'Нұрсұлтан Әлімханұлы',
-    email: 'nursultan.a@bil-arys.edu.kz',
-    iin: '920311300703',
-    password: 'BIL#7021',
-    role: 'EDUCATOR',
-    assignedClassIds: ['cls-7b'],
-    phone: '+7 701 333 7003',
-  },
-  {
-    id: 'user-teacher-7b',
-    name: 'Гүлнар Дәулетқызы',
-    email: 'gulnar.d@bil-arys.edu.kz',
-    iin: '880719400704',
-    password: 'BIL#7022',
-    role: 'CLASS_TEACHER',
-    assignedClassIds: ['cls-7b'],
-    phone: '+7 707 444 7004',
-  },
-
-  // 4. 8A сыныбы
-  {
-    id: 'user-edu-8a',
-    name: 'Дәурен Қанатұлы',
-    email: 'dauren.k@bil-arys.edu.kz',
-    iin: '930415300801',
-    password: 'BIL#8011',
-    role: 'EDUCATOR',
-    assignedClassIds: ['cls-8a'],
-    phone: '+7 702 555 8001',
-  },
-  {
-    id: 'user-teacher-8a',
-    name: 'Меруерт Болатқызы',
-    email: 'meruert.b@bil-arys.edu.kz',
-    iin: '900823400802',
-    password: 'BIL#8012',
-    role: 'CLASS_TEACHER',
-    assignedClassIds: ['cls-8a'],
-    phone: '+7 708 666 8002',
-  },
-
-  // 5. 8B сыныбы
-  {
-    id: 'user-edu-8b',
-    name: 'Бауыржан Саматұлы',
-    email: 'bauyrzhan.s@bil-arys.edu.kz',
-    iin: '940618300803',
-    password: 'BIL#8021',
-    role: 'EDUCATOR',
-    assignedClassIds: ['cls-8b'],
-    phone: '+7 701 777 8003',
-  },
-  {
-    id: 'user-teacher-8b',
-    name: 'Динара Асқарқызы',
-    email: 'dinara.a@bil-arys.edu.kz',
-    iin: '910912400804',
-    password: 'BIL#8022',
-    role: 'CLASS_TEACHER',
-    assignedClassIds: ['cls-8b'],
-    phone: '+7 707 888 8004',
-  },
-
-  // 6. 9A сыныбы
-  {
-    id: 'user-edu-9a',
-    name: 'Мақсат Жақсылықұлы',
-    email: 'maqsat.zh@bil-arys.edu.kz',
-    iin: '950117300901',
-    password: 'BIL#9011',
-    role: 'EDUCATOR',
-    assignedClassIds: ['cls-9a'],
-    phone: '+7 702 999 9001',
-  },
-  {
-    id: 'user-teacher-9a',
-    name: 'Жадыра Мұратқызы',
-    email: 'zhadyra.m@bil-arys.edu.kz',
-    iin: '921105400902',
-    password: 'BIL#9012',
-    role: 'CLASS_TEACHER',
-    assignedClassIds: ['cls-9a'],
-    phone: '+7 705 111 9002',
-  },
-
-  // 7. 10A сыныбы
-  {
-    id: 'user-edu-10a',
-    name: 'Азамат Қайратұлы',
-    email: 'azamat.q@bil-arys.edu.kz',
-    iin: '930822301001',
-    password: 'BIL#1001',
-    role: 'EDUCATOR',
-    assignedClassIds: ['cls-10a'],
-    phone: '+7 701 222 1001',
-  },
-  {
-    id: 'user-teacher-10a',
-    name: 'Самал Төлегенқызы',
-    email: 'samal.t@bil-arys.edu.kz',
-    iin: '891230401002',
-    password: 'BIL#1002',
-    role: 'CLASS_TEACHER',
-    assignedClassIds: ['cls-10a'],
-    phone: '+7 708 333 1002',
-  },
-
-  // 8. 11A сыныбы
-  {
-    id: 'user-edu-11a',
-    name: 'Бекзат Оразбекұлы',
-    email: 'bekzat.o@bil-arys.edu.kz',
-    iin: '920409301101',
-    password: 'BIL#1101',
-    role: 'EDUCATOR',
-    assignedClassIds: ['cls-11a'],
-    phone: '+7 702 444 1101',
-  },
-  {
-    id: 'user-teacher-11a',
-    name: 'Әсел Ғабитқызы',
-    email: 'asel.g@bil-arys.edu.kz',
-    iin: '880315401102',
-    password: 'BIL#1102',
-    role: 'CLASS_TEACHER',
-    assignedClassIds: ['cls-11a'],
-    phone: '+7 707 555 1102',
+    isActive: true,
+    status: 'active',
   },
 ];
 
-// Initial Classes (Әр сыныпқа нақты тәрбиеші мен сынып жетекші бекітілген)
+// Initial Classes (Бастапқы күйде барлық сыныптар таза, қызметкерлерді әкімші өзі бекітеді)
 export const INITIAL_CLASSES: SchoolClass[] = [
-  { id: 'cls-7a', name: '7A', grade: 7, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-7a', classTeacherId: 'user-teacher-7a' },
-  { id: 'cls-7b', name: '7B', grade: 7, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-7b', classTeacherId: 'user-teacher-7b' },
-  { id: 'cls-8a', name: '8A', grade: 8, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-8a', classTeacherId: 'user-teacher-8a' },
-  { id: 'cls-8b', name: '8B', grade: 8, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-8b', classTeacherId: 'user-teacher-8b' },
-  { id: 'cls-9a', name: '9A', grade: 9, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-9a', classTeacherId: 'user-teacher-9a' },
-  { id: 'cls-10a', name: '10A', grade: 10, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-10a', classTeacherId: 'user-teacher-10a' },
-  { id: 'cls-11a', name: '11A', grade: 11, academicYearId: 'ay-2026-2027', educatorId: 'user-edu-11a', classTeacherId: 'user-teacher-11a' },
+  { id: 'cls-7a', name: '7A', grade: 7, academicYearId: 'ay-2026-2027', educatorId: undefined, classTeacherId: undefined },
+  { id: 'cls-7b', name: '7B', grade: 7, academicYearId: 'ay-2026-2027', educatorId: undefined, classTeacherId: undefined },
+  { id: 'cls-8a', name: '8A', grade: 8, academicYearId: 'ay-2026-2027', educatorId: undefined, classTeacherId: undefined },
+  { id: 'cls-8b', name: '8B', grade: 8, academicYearId: 'ay-2026-2027', educatorId: undefined, classTeacherId: undefined },
+  { id: 'cls-9a', name: '9A', grade: 9, academicYearId: 'ay-2026-2027', educatorId: undefined, classTeacherId: undefined },
+  { id: 'cls-10a', name: '10A', grade: 10, academicYearId: 'ay-2026-2027', educatorId: undefined, classTeacherId: undefined },
+  { id: 'cls-11a', name: '11A', grade: 11, academicYearId: 'ay-2026-2027', educatorId: undefined, classTeacherId: undefined },
 ];
 
 // Initial Students (Таза база: алдын ала енгізілген оқушы жоқ, 0 оқушы)
@@ -575,7 +422,7 @@ class StorageService {
   }
 
   // --- USERS ---
-  public getUsers(): User[] {
+  public getUsers(onlyActive?: boolean): User[] {
     const list = this.getItem<User[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
     // Ensure the master administrator is always preserved
     const hasAdmin = list.some((u) => u.id === 'user-admin' || u.role === 'ADMINISTRATOR');
@@ -584,16 +431,26 @@ class StorageService {
       list.unshift(masterAdmin);
       this.setItem(STORAGE_KEYS.USERS, list);
     }
+    if (onlyActive) {
+      return list.filter((u) => u.isActive !== false && u.status !== 'inactive');
+    }
     return list;
   }
 
   public saveUser(user: User, adminId: string, adminName: string): void {
     const users = this.getUsers();
     const idx = users.findIndex((u) => u.id === user.id);
+    const enrichedUser: User = {
+      ...user,
+      isActive: user.isActive !== undefined ? user.isActive : true,
+      status: user.isActive === false || user.status === 'inactive' ? 'inactive' : 'active',
+      updatedAt: new Date().toISOString(),
+      createdAt: user.createdAt || (idx >= 0 ? users[idx].createdAt : new Date().toISOString()),
+    };
     if (idx >= 0) {
-      users[idx] = user;
+      users[idx] = enrichedUser;
     } else {
-      users.push(user);
+      users.push(enrichedUser);
     }
     this.setItem(STORAGE_KEYS.USERS, users);
     this.addAuditLog({
@@ -603,8 +460,96 @@ class StorageService {
       action: idx >= 0 ? 'UPDATE_USER' : 'CREATE_USER',
       entityType: 'system',
       entityId: user.id,
-      newValue: `${user.name} (${user.role})`,
+      newValue: `${user.name} (${user.role}) - ${enrichedUser.status}`,
       timestamp: new Date().toISOString(),
+    });
+  }
+
+  public toggleUserStatus(
+    userId: string,
+    adminId: string,
+    adminName: string
+  ): { success: boolean; newStatus: boolean; message: string } {
+    if (userId === 'user-admin') {
+      return { success: false, newStatus: true, message: 'Бас әкімшіні (Достонбек Тажиханов) өшіруге болмайды!' };
+    }
+    const users = this.getUsers();
+    const user = users.find((u) => u.id === userId);
+    if (!user) {
+      return { success: false, newStatus: false, message: 'Қызметкер табылмады' };
+    }
+    const currentlyActive = user.isActive !== false && user.status !== 'inactive';
+    const newActiveState = !currentlyActive;
+    user.isActive = newActiveState;
+    user.status = newActiveState ? 'active' : 'inactive';
+    user.updatedAt = new Date().toISOString();
+
+    this.setItem(STORAGE_KEYS.USERS, users);
+    this.addAuditLog({
+      userId: adminId,
+      userName: adminName,
+      userRole: 'ADMINISTRATOR',
+      action: 'TOGGLE_USER_STATUS',
+      entityType: 'system',
+      entityId: userId,
+      newValue: newActiveState ? 'active' : 'inactive',
+      timestamp: new Date().toISOString(),
+      details: `«${user.name}» қызметкері ${newActiveState ? 'қайта белсенді етілді (қосылды)' : 'уақытша өшірілді (тоқтатылды)'}`,
+    });
+
+    return {
+      success: true,
+      newStatus: newActiveState,
+      message: `«${user.name}» ${newActiveState ? 'сәтті белсенді етілді!' : 'уақытша өшірілді.'}`,
+    };
+  }
+
+  public transferStaff(
+    userId: string,
+    toClassId: string | undefined,
+    adminId: string,
+    adminName: string
+  ): void {
+    const users = this.getUsers();
+    const user = users.find((u) => u.id === userId);
+    if (!user) return;
+
+    const classes = this.getClasses();
+
+    // 1. Unlink from all classes
+    classes.forEach((cls) => {
+      if (cls.educatorId === userId) cls.educatorId = undefined;
+      if (cls.classTeacherId === userId) cls.classTeacherId = undefined;
+    });
+
+    // 2. Link to new class if provided
+    if (toClassId) {
+      const targetCls = classes.find((c) => c.id === toClassId);
+      if (targetCls) {
+        if (user.role === 'EDUCATOR') {
+          targetCls.educatorId = userId;
+        } else if (user.role === 'CLASS_TEACHER') {
+          targetCls.classTeacherId = userId;
+        }
+      }
+    }
+    this.setItem(STORAGE_KEYS.CLASSES, classes);
+
+    // 3. Update user's assignedClassIds
+    user.assignedClassIds = toClassId ? [toClassId] : [];
+    user.updatedAt = new Date().toISOString();
+    this.setItem(STORAGE_KEYS.USERS, users);
+
+    this.addAuditLog({
+      userId: adminId,
+      userName: adminName,
+      userRole: 'ADMINISTRATOR',
+      action: 'TRANSFER_STAFF',
+      entityType: 'system',
+      entityId: userId,
+      newValue: toClassId || 'none',
+      timestamp: new Date().toISOString(),
+      details: `«${user.name}» қызметкері ${toClassId ? `${toClassId} сыныбына ауыстырылды` : 'сыныптан босатылды'}`,
     });
   }
 

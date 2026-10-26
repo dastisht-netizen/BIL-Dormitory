@@ -82,6 +82,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, message: 'Қолданушы табылмады. 12 таңбалы ЖСН (ИИН) енгізіңіз.' };
     }
 
+    // Inactive status check (except for Master Admin)
+    if (found.role !== 'ADMINISTRATOR' && (found.isActive === false || found.status === 'inactive')) {
+      return {
+        success: false,
+        message: 'Бұл қызметкердің аккаунты әкімші тарапынан уақытша өшірілген (белсенді емес). Деректер сақталған, бірақ жүйеге кіру үшін жатақхана меңгерушісіне хабарласыңыз.',
+      };
+    }
+
     // Password check if provided
     if (password && found.password && found.password.trim() !== password.trim()) {
       return { success: false, message: 'Құпиясөз қате. Қайталап көріңіз.' };
