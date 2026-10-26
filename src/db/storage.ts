@@ -528,23 +528,22 @@ class StorageService {
 
   // --- CLASSES ---
   public getClasses(): SchoolClass[] {
-    const list = this.getItem(STORAGE_KEYS.CLASSES, INITIAL_CLASSES);
+    const list = this.getItem<SchoolClass[]>(STORAGE_KEYS.CLASSES, INITIAL_CLASSES);
     let changed = false;
 
+    // Ensure all 7 classes (7A-11A) exist in database
     INITIAL_CLASSES.forEach((defaultClass) => {
       const idx = list.findIndex((c) => c.id === defaultClass.id);
       if (idx === -1) {
-        list.push(defaultClass);
+        list.push({
+          id: defaultClass.id,
+          name: defaultClass.name,
+          grade: defaultClass.grade,
+          academicYearId: defaultClass.academicYearId,
+          educatorId: undefined,
+          classTeacherId: undefined,
+        });
         changed = true;
-      } else {
-        if (!list[idx].educatorId || !list[idx].classTeacherId) {
-          list[idx] = {
-            ...list[idx],
-            educatorId: list[idx].educatorId || defaultClass.educatorId,
-            classTeacherId: list[idx].classTeacherId || defaultClass.classTeacherId,
-          };
-          changed = true;
-        }
       }
     });
 
@@ -577,18 +576,12 @@ class StorageService {
 
   // --- USERS ---
   public getUsers(): User[] {
-    const list = this.getItem(STORAGE_KEYS.USERS, INITIAL_USERS);
-    let changed = false;
-
-    INITIAL_USERS.forEach((defaultUser) => {
-      const idx = list.findIndex((u) => u.id === defaultUser.id || (u.iin && u.iin === defaultUser.iin));
-      if (idx === -1) {
-        list.push(defaultUser);
-        changed = true;
-      }
-    });
-
-    if (changed) {
+    const list = this.getItem<User[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
+    // Ensure the master administrator is always preserved
+    const hasAdmin = list.some((u) => u.id === 'user-admin' || u.role === 'ADMINISTRATOR');
+    if (!hasAdmin) {
+      const masterAdmin = INITIAL_USERS.find((u) => u.id === 'user-admin') || INITIAL_USERS[0];
+      list.unshift(masterAdmin);
       this.setItem(STORAGE_KEYS.USERS, list);
     }
     return list;
@@ -616,8 +609,32 @@ class StorageService {
   }
 
   public deleteUser(userId: string, adminId: string, adminName: string): void {
+    if (userId === 'user-admin') {
+      alert('Бас әкімшіні (Достонбек Тажиханов) өшіруге болмайды!');
+      return;
+    }
+
+    // 1. Remove from users list permanently
     const users = this.getUsers().filter((u) => u.id !== userId);
     this.setItem(STORAGE_KEYS.USERS, users);
+
+    // 2. Unlink from any classes where this user was assigned as educator or class teacher
+    const classes = this.getClasses();
+    let classChanged = false;
+    classes.forEach((cls) => {
+      if (cls.educatorId === userId) {
+        cls.educatorId = undefined;
+        classChanged = true;
+      }
+      if (cls.classTeacherId === userId) {
+        cls.classTeacherId = undefined;
+        classChanged = true;
+      }
+    });
+    if (classChanged) {
+      this.setItem(STORAGE_KEYS.CLASSES, classes);
+    }
+
     this.addAuditLog({
       userId: adminId,
       userName: adminName,
@@ -626,6 +643,92 @@ class StorageService {
       entityType: 'system',
       entityId: userId,
       timestamp: new Date().toISOString(),
+      details: `Қызметкер өшірілді және сыныптардан толық босатылды (${userId})`,
+    });
+  }
+
+  // Assign or unassign educator/teacher to a class
+  public assignStaffToClass(
+    classId: string,
+    role: 'EDUCATOR' | 'CLASS_TEACHER',
+    userId: string | undefined,
+    adminId: string,
+    adminName: string
+  ): void {
+    const classes = this.getClasses();
+    const cls = classes.find((c) => c.id === classId);
+    if (!cls) return;
+
+    const previousUserId = role === 'EDUCATOR' ? cls.educatorId : cls.classTeacherId;
+    if (role === 'EDUCATOR') {
+      cls.educatorId = userId || undefined;
+    } else {
+      cls.classTeacherId = userId || undefined;
+    }
+    this.setItem(STORAGE_KEYS.CLASSES, classes);
+
+    // Update users' assignedClassIds
+    const users = this.getUsers();
+    let usersChanged = false;
+
+    // Unassign previous user if needed
+    if (previousUserId && previousUserId !== userId) {
+      const prevUser = users.find((u) => u.id === previousUserId);
+      if (prevUser && prevUser.assignedClassIds) {
+        prevUser.assignedClassIds = prevUser.assignedClassIds.filter((cid) => cid !== classId);
+        usersChanged = true;
+      }
+    }
+
+    // Assign new user
+    if (userId) {
+      const newUser = users.find((u) => u.id === userId);
+      if (newUser) {
+        const currentIds = newUser.assignedClassIds || [];
+        if (!currentIds.includes(classId)) {
+          newUser.assignedClassIds = [...currentIds, classId];
+          usersChanged = true;
+        }
+      }
+    }
+
+    if (usersChanged) {
+      this.setItem(STORAGE_KEYS.USERS, users);
+    }
+
+    this.addAuditLog({
+      userId: adminId,
+      userName: adminName,
+      userRole: 'ADMINISTRATOR',
+      action: 'ASSIGN_STAFF',
+      entityType: 'system',
+      entityId: classId,
+      newValue: `${role}: ${userId || 'none'}`,
+      timestamp: new Date().toISOString(),
+      details: `${cls.name} сыныбына ${role === 'EDUCATOR' ? 'тәрбиеші' : 'сынып жетекшісі'} тағайындалды`,
+    });
+  }
+
+  // Clear all sample/dummy staff and unassign all classes
+  public clearAllSampleStaff(adminId: string, adminName: string): void {
+    const users = this.getUsers().filter((u) => u.id === 'user-admin' || u.role === 'ADMINISTRATOR');
+    this.setItem(STORAGE_KEYS.USERS, users);
+
+    const classes = this.getClasses().map((c) => ({
+      ...c,
+      educatorId: undefined,
+      classTeacherId: undefined,
+    }));
+    this.setItem(STORAGE_KEYS.CLASSES, classes);
+
+    this.addAuditLog({
+      userId: adminId,
+      userName: adminName,
+      userRole: 'ADMINISTRATOR',
+      action: 'CLEAR_SAMPLE_STAFF',
+      entityType: 'system',
+      timestamp: new Date().toISOString(),
+      details: 'Барлық үлгілік қызметкерлер өшірілді. Бас әкімші (Достонбек Тажиханов) ғана қалды.',
     });
   }
 

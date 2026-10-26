@@ -73,6 +73,7 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
 
   // User Form State
   const [showUserModal, setShowUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserIin, setNewUserIin] = useState('');
@@ -131,13 +132,26 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
     showNotification(`«${userName}» қызметкеріне жаңа құпиясөз берілді: ${newPass}`);
   };
 
-  const handleOpenUserModal = () => {
-    setNewUserName('');
-    setNewUserPhone('');
-    setNewUserRole('EDUCATOR');
-    setNewAssignedClass('cls-7a');
-    generateSampleIin();
-    generateSecurePassword();
+  const handleOpenUserModal = (userToEdit?: User, presetRole?: Role, presetClassId?: string) => {
+    if (userToEdit) {
+      setEditingUser(userToEdit);
+      setNewUserName(userToEdit.name);
+      setNewUserPhone(userToEdit.phone || '');
+      setNewUserRole(userToEdit.role);
+      setNewAssignedClass(userToEdit.assignedClassIds?.[0] || 'cls-7a');
+      setNewUserIin(userToEdit.iin || '');
+      setNewUserPassword(userToEdit.password || '');
+      setNewUserEmail(userToEdit.email || '');
+    } else {
+      setEditingUser(null);
+      setNewUserName('');
+      setNewUserPhone('');
+      setNewUserRole(presetRole || 'EDUCATOR');
+      setNewAssignedClass(presetClassId || 'cls-7a');
+      setNewUserEmail('');
+      generateSampleIin();
+      generateSecurePassword();
+    }
     setShowUserModal(true);
   };
 
@@ -238,42 +252,38 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
     const cleanIin = newUserIin.trim();
 
     if (!/^\d{12}$/.test(cleanIin)) {
-      alert('Қызметкердің ИИН-і дәл 12 цифрдан тұруы тиіс!');
+      alert('Қызметкердің ЖСН (ИИН) нөмірі дәл 12 цифрдан тұруы тиіс!');
       return;
     }
 
-    const generatedPass = newUserPassword.trim() || generateSecurePassword();
-    const userId = `user-${Date.now()}`;
+    const passToUse = newUserPassword.trim() || (editingUser ? editingUser.password : generateSecurePassword());
+    const userId = editingUser ? editingUser.id : `user-${Date.now()}`;
 
-    const newUser: User = {
+    const userToSave: User = {
       id: userId,
       name: newUserName.trim(),
       iin: cleanIin,
       email: newUserEmail.trim() || `${cleanIin}@bil-arys.edu.kz`,
-      password: generatedPass,
+      password: passToUse,
       phone: newUserPhone.trim() || undefined,
       role: newUserRole,
       assignedClassIds: newAssignedClass ? [newAssignedClass] : [],
     };
 
-    storage.saveUser(newUser, currentUser.id, currentUser.name);
+    storage.saveUser(userToSave, currentUser.id, currentUser.name);
 
     // If an assigned class is selected, link it in the class record as well
-    if (newAssignedClass) {
-      const cls = classes.find((c) => c.id === newAssignedClass);
-      if (cls) {
-        const updatedCls: SchoolClass = {
-          ...cls,
-          educatorId: newUserRole === 'EDUCATOR' ? userId : cls.educatorId,
-          classTeacherId: newUserRole === 'CLASS_TEACHER' ? userId : cls.classTeacherId,
-        };
-        storage.saveClass(updatedCls, currentUser.id, currentUser.name);
-      }
+    if (newAssignedClass && (newUserRole === 'EDUCATOR' || newUserRole === 'CLASS_TEACHER')) {
+      storage.assignStaffToClass(newAssignedClass, newUserRole, userId, currentUser.id, currentUser.name);
     }
 
     loadData();
     setShowUserModal(false);
-    showNotification(`Қызметкер «${newUser.name}» сәтті тіркелді! Логин (ИИН): ${cleanIin} | Құпиясөз: ${generatedPass}`);
+    showNotification(
+      editingUser
+        ? `«${userToSave.name}» қызметкерінің мәліметтері сәтті жаңартылды!`
+        : `Қызметкер «${userToSave.name}» сәтті тіркелді! Логин (ЖСН): ${cleanIin} | Құпиясөз: ${passToUse}`
+    );
   };
 
   const handleDeleteUser = (userId: string, name: string) => {
@@ -761,46 +771,193 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
 
       {/* TAB 4: CLASSES & ASSIGNMENTS */}
       {activeAdminTab === 'classes' && (
-        <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-xs border border-gray-100 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+        <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-xs border border-gray-100 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
             <div>
-              <h3 className="font-extrabold text-base text-[#24342D]">
-                Сыныптар мен бекітілген тәрбиешілер
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#E6F4EA] text-[#075C42]">
+                  Сыныптарды басқару
+                </span>
+                <span className="text-xs text-gray-400 font-bold">({classes.length} сынып)</span>
+              </div>
+              <h3 className="font-extrabold text-base sm:text-lg text-[#24342D] mt-1">
+                Сыныптарға тәрбиеші мен сынып жетекшіні бекіту
               </h3>
-              <p className="text-xs text-gray-400">
-                Әр сыныпқа жауапты тәрбиеші мен сынып жетекшісін тағайындау
+              <p className="text-xs text-gray-500 mt-0.5">
+                Әр сыныпқа нақты тәрбиеші мен жетекшіні таңдаңыз немесе жаңа адамды тіркеңіз. Өзгеріс жүйеге лезде бекітіледі.
               </p>
             </div>
-            <button
-              onClick={() => setShowClassModal(true)}
-              className="px-3.5 py-2 rounded-xl bg-[#075C42] text-white text-xs font-bold hover:bg-[#054531] flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4 text-[#FFE9A8]" />
-              <span>Сынып қосу</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleOpenUserModal(undefined, 'EDUCATOR')}
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Тәрбиеші тіркеу</span>
+              </button>
+              <button
+                onClick={() => handleOpenUserModal(undefined, 'CLASS_TEACHER')}
+                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Жетекші тіркеу</span>
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {/* Classes Cards Grid with Interactive Dropdowns */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {classes.map((cls) => {
               const edu = users.find((u) => u.id === cls.educatorId);
               const teacher = users.find((u) => u.id === cls.classTeacherId);
               const count = students.filter((s) => s.classId === cls.id).length;
 
+              const availableEducators = users.filter((u) => u.role === 'EDUCATOR');
+              const availableTeachers = users.filter((u) => u.role === 'CLASS_TEACHER');
+
               return (
-                <div key={cls.id} className="p-4 rounded-2xl bg-gray-50 border border-gray-100 text-xs space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-base text-[#075C42]">{cls.name} сыныбы</span>
-                    <span className="px-2 py-0.5 rounded-full bg-white text-gray-700 font-bold border border-gray-200">
-                      {count} оқушы
+                <div
+                  key={cls.id}
+                  className="p-5 rounded-3xl bg-[#F8FAFC] border border-slate-200/90 hover:border-indigo-400 transition shadow-xs flex flex-col justify-between space-y-4"
+                >
+                  {/* Class Header */}
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 rounded-2xl bg-[#4338CA] text-white flex items-center justify-center font-black text-sm">
+                        {cls.name}
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-sm text-[#0F172A]">{cls.name} сыныбы</h4>
+                        <span className="text-[11px] text-slate-400 font-semibold">{cls.grade}-сынып тобы</span>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-xs shadow-2xs">
+                      {count} / 26 оқушы
                     </span>
                   </div>
-                  <div className="text-gray-600">
-                    <span className="text-gray-400 block text-[10px]">Тәрбиеші:</span>
-                    <span className="font-bold text-[#24342D]">{edu ? edu.name : '— Тағайындалмаған'}</span>
+
+                  {/* Educator Selector Box */}
+                  <div className="p-3 rounded-2xl bg-white border border-emerald-200/80 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-emerald-800 flex items-center gap-1.5">
+                        <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Тәрбиеші:</span>
+                      </span>
+                      {edu ? (
+                        <button
+                          onClick={() => {
+                            storage.assignStaffToClass(cls.id, 'EDUCATOR', undefined, currentUser.id, currentUser.name);
+                            loadData();
+                            showNotification(`${cls.name} сыныбының тәрбиешісі босатылды.`);
+                          }}
+                          className="text-[10px] text-rose-500 hover:text-rose-700 font-bold hover:underline cursor-pointer"
+                        >
+                          Босату
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded">
+                          Бос
+                        </span>
+                      )}
+                    </div>
+
+                    <select
+                      value={cls.educatorId || ''}
+                      onChange={(e) => {
+                        const val = e.target.value || undefined;
+                        storage.assignStaffToClass(cls.id, 'EDUCATOR', val, currentUser.id, currentUser.name);
+                        loadData();
+                        const assignedPerson = users.find((u) => u.id === val);
+                        showNotification(
+                          val
+                            ? `${cls.name} сыныбына тәрбиеші болып «${assignedPerson?.name}» бекітілді!`
+                            : `${cls.name} сыныбының тәрбиешісі босатылды.`
+                        );
+                      }}
+                      className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-[#F0FDF4] text-slate-800"
+                    >
+                      <option value="">— Тәрбиеші тағайындалмаған (Бос) —</option>
+                      {availableEducators.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} (ЖСН: {u.iin})
+                        </option>
+                      ))}
+                    </select>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[11px] text-slate-400 font-mono">
+                        {edu ? `ЖСН: ${edu.iin} • Пароль: ${edu.password}` : 'Тәрбиеші бекітілмеген'}
+                      </span>
+                      <button
+                        onClick={() => handleOpenUserModal(undefined, 'EDUCATOR', cls.id)}
+                        className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Жаңадан жазу</span>
+                      </button>
+                    </div>
                   </div>
-                  <div className="text-gray-600">
-                    <span className="text-gray-400 block text-[10px]">Сынып жетекшісі:</span>
-                    <span className="font-bold text-[#24342D]">{teacher ? teacher.name : '— Тағайындалмаған'}</span>
+
+                  {/* Class Teacher Selector Box */}
+                  <div className="p-3 rounded-2xl bg-white border border-blue-200/80 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-blue-800 flex items-center gap-1.5">
+                        <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Сынып жетекшісі:</span>
+                      </span>
+                      {teacher ? (
+                        <button
+                          onClick={() => {
+                            storage.assignStaffToClass(cls.id, 'CLASS_TEACHER', undefined, currentUser.id, currentUser.name);
+                            loadData();
+                            showNotification(`${cls.name} сыныбының жетекшісі босатылды.`);
+                          }}
+                          className="text-[10px] text-rose-500 hover:text-rose-700 font-bold hover:underline cursor-pointer"
+                        >
+                          Босату
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded">
+                          Бос
+                        </span>
+                      )}
+                    </div>
+
+                    <select
+                      value={cls.classTeacherId || ''}
+                      onChange={(e) => {
+                        const val = e.target.value || undefined;
+                        storage.assignStaffToClass(cls.id, 'CLASS_TEACHER', val, currentUser.id, currentUser.name);
+                        loadData();
+                        const assignedPerson = users.find((u) => u.id === val);
+                        showNotification(
+                          val
+                            ? `${cls.name} сыныбына жетекші болып «${assignedPerson?.name}» бекітілді!`
+                            : `${cls.name} сыныбының жетекшісі босатылды.`
+                        );
+                      }}
+                      className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#EFF6FF] text-slate-800"
+                    >
+                      <option value="">— Жетекші тағайындалмаған (Бос) —</option>
+                      {availableTeachers.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} (ЖСН: {u.iin})
+                        </option>
+                      ))}
+                    </select>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[11px] text-slate-400 font-mono">
+                        {teacher ? `ЖСН: ${teacher.iin} • Пароль: ${teacher.password}` : 'Жетекші бекітілмеген'}
+                      </span>
+                      <button
+                        onClick={() => handleOpenUserModal(undefined, 'CLASS_TEACHER', cls.id)}
+                        className="text-[11px] font-bold text-blue-700 hover:text-blue-800 hover:underline flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Жаңадан жазу</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -821,19 +978,50 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
                 <span className="text-xs text-gray-400 font-bold">({users.length} қызметкер)</span>
               </div>
               <h3 className="font-extrabold text-base sm:text-lg text-[#0F172A] mt-1">
-                Қызметкерлер тізімі және автоматты есептік жазбалар
+                Қызметкерлер тізімі және есептік жазбалар
               </h3>
               <p className="text-xs text-gray-500 mt-0.5">
-                Кіру логині — қызметкердің 12-таңбалы ИИН-і. Құпиясөз автоматты түрде (BIL#XXXX) жасалады.
+                Қызметкерлерді өзіңіз тіркеңіз, аты-жөні мен сыныбын өңдеңіз, немесе өшіріңіз. Өшірілген қызметкер қайта пайда болмайды.
               </p>
             </div>
-            <button
-              onClick={handleOpenUserModal}
-              className="px-4 py-2.5 rounded-xl bg-[#4338CA] hover:bg-[#3730A3] text-white text-xs font-extrabold shadow-md transition flex items-center gap-2 shrink-0 cursor-pointer"
-            >
-              <Plus className="w-4 h-4 text-[#FFE9A8]" />
-              <span>Жаңа қызметкер тіркеу</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => {
+                  if (
+                    confirm(
+                      'Барлық үлгілік/бот қызметкерлерді өшіріп, таза база қалдыруды растайсыз ба?\n\nТек сіздің бас әкімші (Достонбек Тажиханов) аккаунтыңыз қалады, содан соң барлық қызметкерлерді өзіңіз нөлден тіркейсіз.'
+                    )
+                  ) {
+                    storage.clearAllSampleStaff(currentUser.id, currentUser.name);
+                    loadData();
+                    showNotification('Барлық үлгілік қызметкерлер өшірілді! Енді өз қызметкерлеріңізді тіркей аласыз.');
+                  }
+                }}
+                className="px-3.5 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                title="Үлгілік қызметкерлерді өшіру"
+              >
+                <Trash2 className="w-4 h-4 text-rose-600" />
+                <span>Үлгілерді тазарту (Өзім тіркеймін)</span>
+              </button>
+
+              <button
+                onClick={() => handleOpenUserModal()}
+                className="px-4 py-2.5 rounded-xl bg-[#4338CA] hover:bg-[#3730A3] text-white text-xs font-extrabold shadow-md transition flex items-center gap-2 shrink-0 cursor-pointer"
+              >
+                <Plus className="w-4 h-4 text-[#FFE9A8]" />
+                <span>Жаңа қызметкер тіркеу</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Info Box */}
+          <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200/80 text-xs text-amber-950 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>
+                <strong>Толық бақылау:</strong> Тәрбиеші немесе жетекшіні өшіріп басқа адам жазғыңыз келсе, қасындағы <strong>«Өңдеу» (қарындаш)</strong> батырмасымен атын, ЖСН, сыныбын өзгертіңіз немесе <strong>«Өшіру» (қоқыс)</strong> батырмасымен өшіріп, жаңа адам тіркеңіз.
+              </span>
+            </div>
           </div>
 
           {/* Dedicated Staff Table */}
@@ -844,8 +1032,8 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
                   <th className="py-3 px-3">Қызметкер</th>
                   <th className="py-3 px-3">Рөлі</th>
                   <th className="py-3 px-3">Бекітілген сынып</th>
-                  <th className="py-3 px-3">Логин (12-таңбалы ИИН)</th>
-                  <th className="py-3 px-3">Уақытша құпиясөз</th>
+                  <th className="py-3 px-3">Логин (12-таңбалы ЖСН)</th>
+                  <th className="py-3 px-3">Құпиясөз</th>
                   <th className="py-3 px-3">Байланыс</th>
                   <th className="py-3 px-3 text-right">Әрекеттер</th>
                 </tr>
@@ -910,7 +1098,7 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
                             {assignedClassNames} сыныбы
                           </span>
                         ) : (
-                          <span className="text-gray-400 text-[11px]">— БАРЛЫҒЫ</span>
+                          <span className="text-gray-400 text-[11px]">— ТАҒАЙЫНДАЛМАҒАН</span>
                         )}
                       </td>
 
@@ -922,8 +1110,8 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
                           </code>
                           <button
                             onClick={() => copyToClipboard(userIin, `iin-${u.id}`)}
-                            className="p-1 text-slate-400 hover:text-indigo-600 rounded transition"
-                            title="ИИН көшіріп алу"
+                            className="p-1 text-slate-400 hover:text-indigo-600 rounded transition cursor-pointer"
+                            title="ЖСН көшіріп алу"
                           >
                             {copiedKey === `iin-${u.id}` ? (
                               <Check className="w-3.5 h-3.5 text-emerald-600" />
@@ -942,14 +1130,14 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
                           </div>
                           <button
                             onClick={() => togglePasswordVisibility(u.id)}
-                            className="p-1 text-slate-400 hover:text-slate-600 rounded transition"
+                            className="p-1 text-slate-400 hover:text-slate-600 rounded transition cursor-pointer"
                             title={isPassVisible ? 'Жасыру' : 'Көрсету'}
                           >
                             {isPassVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                           </button>
                           <button
                             onClick={() => copyToClipboard(userPassword, `pass-${u.id}`)}
-                            className="p-1 text-slate-400 hover:text-indigo-600 rounded transition"
+                            className="p-1 text-slate-400 hover:text-indigo-600 rounded transition cursor-pointer"
                             title="Құпиясөзді көшіріп алу"
                           >
                             {copiedKey === `pass-${u.id}` ? (
@@ -969,17 +1157,29 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
                       {/* Actions */}
                       <td className="py-3.5 px-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* Edit button */}
+                          <button
+                            onClick={() => handleOpenUserModal(u)}
+                            className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                            title="Өңдеу (Аты-жөнін, ЖСН, сыныбын өзгерту)"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+
+                          {/* Reset Password */}
                           <button
                             onClick={() => resetStaffPassword(u.id, u.name)}
-                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition cursor-pointer"
                             title="Жаңа BIL# құпиясөз жасау"
                           >
                             <KeyRound className="w-4 h-4" />
                           </button>
+
+                          {/* Delete */}
                           {u.id !== currentUser.id && (
                             <button
                               onClick={() => handleDeleteUser(u.id, u.name)}
-                              className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
+                              className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                               title="Өшіру"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1386,10 +1586,12 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
                   </span>
                 </div>
                 <h3 className="font-extrabold text-lg text-[#0F172A] mt-1">
-                  Жаңа қызметкерді тіркеу
+                  {editingUser ? 'Қызметкер мәліметтерін өңдеу' : 'Жаңа қызметкерді тіркеу'}
                 </h3>
                 <p className="text-xs text-gray-400">
-                  Тәрбиеші немесе сынып жетекшісіне ИИН логинін беру және автоматты құпиясөз генерациялау
+                  {editingUser
+                    ? 'Қызметкердің аты-жөнін, ЖСН нөмірін, құпиясөзін немесе сыныбын жаңарту'
+                    : 'Тәрбиеші немесе сынып жетекшісіне ЖСН логинін беру және құпиясөз жасау'}
                 </p>
               </div>
               <button
@@ -1561,7 +1763,7 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
                   className="px-6 py-2.5 rounded-xl bg-[#4338CA] hover:bg-[#3730A3] text-white text-xs font-extrabold shadow-md transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <Check className="w-4 h-4 text-[#FFE9A8]" />
-                  <span>Қызметкерді сақтау</span>
+                  <span>{editingUser ? 'Өзгерістерді сақтау' : 'Қызметкерді сақтау'}</span>
                 </button>
               </div>
             </form>

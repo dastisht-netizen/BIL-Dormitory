@@ -394,7 +394,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                         )}
                       </div>
 
-                      {edu && (
+                      {edu ? (
                         <button
                           onClick={() => handleQuickFill(edu.iin || '', edu.password || '')}
                           className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
@@ -402,6 +402,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                           <LogIn className="w-3.5 h-3.5" />
                           <span>Тәрбиеші болып кіру</span>
                         </button>
+                      ) : (
+                        <div className="pt-2">
+                          <p className="text-[11px] text-slate-400 mb-1.5">
+                            Бұл сыныпқа әзірге тәрбиеші тағайындалмаған
+                          </p>
+                          <button
+                            onClick={() => handleQuickFill('900101300000', 'BIL#1234')}
+                            className="w-full py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-[11px] border border-amber-500/30 transition flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <span>Меңгеруші ретінде бекіту</span>
+                          </button>
+                        </div>
                       )}
                     </div>
 
@@ -449,7 +461,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                         )}
                       </div>
 
-                      {teacher && (
+                      {teacher ? (
                         <button
                           onClick={() => handleQuickFill(teacher.iin || '', teacher.password || '')}
                           className="w-full py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
@@ -457,6 +469,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                           <LogIn className="w-3.5 h-3.5" />
                           <span>Жетекші болып кіру</span>
                         </button>
+                      ) : (
+                        <div className="pt-2">
+                          <p className="text-[11px] text-slate-400 mb-1.5">
+                            Бұл сыныпқа әзірге жетекші тағайындалмаған
+                          </p>
+                          <button
+                            onClick={() => handleQuickFill('900101300000', 'BIL#1234')}
+                            className="w-full py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-[11px] border border-amber-500/30 transition flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <span>Меңгеруші ретінде бекіту</span>
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -525,7 +549,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                       {/* Educator */}
-                      {edu && (
+                      {edu ? (
                         <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-700/80 flex items-center justify-between">
                           <div>
                             <div className="text-[10px] font-bold text-emerald-400">Тәрбиеші: {edu.name}</div>
@@ -543,10 +567,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                             Кіру
                           </button>
                         </div>
+                      ) : (
+                        <div className="p-2.5 rounded-xl bg-slate-900/30 border border-dashed border-slate-800 text-slate-500 text-[11px] flex items-center justify-between">
+                          <span>Тәрбиеші тағайындалмаған</span>
+                          <span className="text-[10px] text-amber-500/80">Бос</span>
+                        </div>
                       )}
 
                       {/* Teacher */}
-                      {teacher && (
+                      {teacher ? (
                         <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-700/80 flex items-center justify-between">
                           <div>
                             <div className="text-[10px] font-bold text-blue-400">Жетекші: {teacher.name}</div>
@@ -563,6 +592,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                           >
                             Кіру
                           </button>
+                        </div>
+                      ) : (
+                        <div className="p-2.5 rounded-xl bg-slate-900/30 border border-dashed border-slate-800 text-slate-500 text-[11px] flex items-center justify-between">
+                          <span>Жетекші тағайындалмаған</span>
+                          <span className="text-[10px] text-amber-500/80">Бос</span>
                         </div>
                       )}
                     </div>
