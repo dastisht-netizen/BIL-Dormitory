@@ -598,9 +598,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin, activeTab = 'dashbo
           isOpen={showPasswordModal}
           onClose={() => setShowPasswordModal(false)}
         />
-            </div>
-          </div>
-        )}
       </header>
     </>
   );

@@ -19,7 +19,7 @@ import { StudentModal } from './StudentModal';
 import { exportToExcel } from '../../utils/exportUtils';
 
 export const StudentManager: React.FC = () => {
-  const { currentUser, isAdmin } = useAuth();
+  const { currentUser, isAdmin, isEducator, isClassTeacher } = useAuth();
   const { t } = useLanguage();
 
   const [students, setStudents] = useState<Student[]>([]);
@@ -33,6 +33,17 @@ export const StudentManager: React.FC = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importText, setImportText] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
+
+  // Filter classes according to role (Class Isolation)
+  const allowedClasses = React.useMemo(() => {
+    if (isAdmin) return classes;
+    return classes.filter(
+      (c) =>
+        currentUser.assignedClassIds?.includes(c.id) ||
+        (isEducator && c.educatorId === currentUser.id) ||
+        (isClassTeacher && c.classTeacherId === currentUser.id)
+    );
+  }, [classes, currentUser, isAdmin, isEducator, isClassTeacher]);
 
   // New Student Form state
   const [newId, setNewId] = useState('');
@@ -49,6 +60,16 @@ export const StudentManager: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Default selectedClassId to first allowed class for staff
+  useEffect(() => {
+    if (!isAdmin && allowedClasses.length > 0) {
+      if (selectedClassId === 'all' || !allowedClasses.some((c) => c.id === selectedClassId)) {
+        setSelectedClassId(allowedClasses[0].id);
+        setNewClassId(allowedClasses[0].id);
+      }
+    }
+  }, [allowedClasses, isAdmin, selectedClassId]);
 
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -152,7 +173,15 @@ export const StudentManager: React.FC = () => {
   };
 
   const filteredStudents = students
-    .filter((st) => selectedClassId === 'all' || st.classId === selectedClassId)
+    .filter((st) => {
+      if (isAdmin) {
+        return selectedClassId === 'all' || st.classId === selectedClassId;
+      }
+      // Strict role isolation: educators and teachers only see students belonging to their assigned classes
+      const isAllowed = allowedClasses.some((c) => c.id === st.classId);
+      if (!isAllowed) return false;
+      return selectedClassId === 'all' || st.classId === selectedClassId;
+    })
     .filter((st) => statusFilter === 'all' || st.status === statusFilter)
     .filter((st) =>
       st.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -173,30 +202,36 @@ export const StudentManager: React.FC = () => {
             Оқушыларды басқару жүйесі
           </h2>
           <p className="text-xs text-gray-500 mt-1">
-            Бірегей ID, жеке карточкалар, Excel импорт және экспорт
+            Бірегей ID, жеке карточкалар, сынып шегі (максимум 26 оқушы)
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {isAdmin && (
-            <>
-              <button
-                onClick={() => setShowImportModal(true)}
-                className="px-3.5 py-2.5 rounded-xl bg-[#E6F4EA] text-[#075C42] text-xs font-bold hover:bg-[#cdecd8] transition flex items-center gap-1.5"
-              >
-                <Upload className="w-4 h-4 text-[#138A62]" />
-                <span>Импорт</span>
-              </button>
-
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="px-4 py-2.5 rounded-xl bg-[#075C42] text-white text-xs font-bold hover:bg-[#054531] shadow-sm transition flex items-center gap-1.5"
-              >
-                <Plus className="w-4 h-4 text-[#FFE9A8]" />
-                <span>Жаңа оқушы қосу</span>
-              </button>
-            </>
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="px-3.5 py-2.5 rounded-xl bg-[#E6F4EA] text-[#075C42] text-xs font-bold hover:bg-[#cdecd8] transition flex items-center gap-1.5"
+            >
+              <Upload className="w-4 h-4 text-[#138A62]" />
+              <span>Импорт</span>
+            </button>
           )}
+
+          <button
+            onClick={() => {
+              setAddError(null);
+              if (selectedClassId !== 'all') {
+                setNewClassId(selectedClassId);
+              } else if (allowedClasses.length > 0) {
+                setNewClassId(allowedClasses[0].id);
+              }
+              setShowAddModal(true);
+            }}
+            className="px-4 py-2.5 rounded-xl bg-[#075C42] text-white text-xs font-bold hover:bg-[#054531] shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <Plus className="w-4 h-4 text-[#FFE9A8]" />
+            <span>Жаңа оқушы қосу</span>
+          </button>
 
           <button
             onClick={handleExportExcel}
@@ -224,12 +259,15 @@ export const StudentManager: React.FC = () => {
               onChange={(e) => setSelectedClassId(e.target.value)}
               className="px-3 py-1.5 text-xs font-bold rounded-xl border border-gray-200 bg-[#F8FAF9] focus:outline-none focus:ring-2 focus:ring-[#138A62]"
             >
-              <option value="all">Барлық сыныптар</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} сыныбы
-                </option>
-              ))}
+              {isAdmin && <option value="all">Барлық сыныптар</option>}
+              {allowedClasses.map((c) => {
+                const count = storage.getClassStudentCount(c.id);
+                return (
+                  <option key={c.id} value={c.id}>
+                    {c.name} сыныбы ({count} / 26)
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -274,57 +312,97 @@ export const StudentManager: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {filteredStudents.map((st) => {
-              const cls = classes.find((c) => c.id === st.classId);
-              return (
-                <tr key={st.id} className="hover:bg-[#F8FAF9]/80 transition">
-                  <td className="py-3 px-3 font-mono font-bold text-gray-500">{st.id}</td>
-                  <td className="py-3 px-3 font-bold text-[#24342D]">
-                    <button
-                      onClick={() => setInspectedStudent(st)}
-                      className="text-left hover:text-[#138A62] transition"
-                    >
-                      {st.fullName}
-                    </button>
-                  </td>
-                  <td className="py-3 px-3 text-center font-bold text-gray-700">{cls?.name}</td>
-                  <td className="py-3 px-3 text-center font-bold text-gray-600">{st.roomNumber || '—'}</td>
-                  <td className="py-3 px-3 text-gray-600 font-mono text-[11px]">{st.parentPhone || '—'}</td>
-                  <td className="py-3 px-3 text-center">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                        st.status === 'active'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : st.status === 'graduated'
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      {st.status === 'active' ? 'Оқуда' : st.status === 'graduated' ? 'Түлек' : 'Ауысқан'}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
+            {filteredStudents.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="py-12 text-center">
+                  <div className="max-w-sm mx-auto space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-[#E6F4EA] text-[#075C42] flex items-center justify-center mx-auto">
+                      <Users className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="font-extrabold text-sm text-[#24342D]">
+                        {searchQuery ? 'Іздеу бойынша оқушы табылмады' : 'Әзірге оқушылар тіркелмеген (0 / 26)'}
+                      </p>
+                      <p className="text-[11px] text-gray-400 mt-1">
+                        {searchQuery
+                          ? 'Басқа сөз немесе бөлме нөмірімен іздеп көріңіз'
+                          : 'Сыныбыңызға оқушыларды тіркеу үшін төмендегі батырманы басыңыз (әр сыныпқа максимум 26 оқушы)'}
+                      </p>
+                    </div>
+                    {!searchQuery && (
+                      <button
+                        onClick={() => {
+                          setAddError(null);
+                          if (selectedClassId !== 'all') {
+                            setNewClassId(selectedClassId);
+                          } else if (allowedClasses.length > 0) {
+                            setNewClassId(allowedClasses[0].id);
+                          }
+                          setShowAddModal(true);
+                        }}
+                        className="px-4 py-2 rounded-xl bg-[#075C42] hover:bg-[#054531] text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm cursor-pointer transition"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-[#FFE9A8]" />
+                        <span>Жаңа оқушы тіркеу</span>
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              filteredStudents.map((st) => {
+                const cls = classes.find((c) => c.id === st.classId);
+                const canManageStudent = isAdmin || allowedClasses.some((c) => c.id === st.classId);
+                return (
+                  <tr key={st.id} className="hover:bg-[#F8FAF9]/80 transition">
+                    <td className="py-3 px-3 font-mono font-bold text-gray-500">{st.id}</td>
+                    <td className="py-3 px-3 font-bold text-[#24342D]">
                       <button
                         onClick={() => setInspectedStudent(st)}
-                        className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold"
+                        className="text-left hover:text-[#138A62] transition"
                       >
-                        Профиль
+                        {st.fullName}
                       </button>
-                      {isAdmin && (
+                    </td>
+                    <td className="py-3 px-3 text-center font-bold text-gray-700">{cls?.name}</td>
+                    <td className="py-3 px-3 text-center font-bold text-gray-600">{st.roomNumber || '—'}</td>
+                    <td className="py-3 px-3 text-gray-600 font-mono text-[11px]">{st.parentPhone || '—'}</td>
+                    <td className="py-3 px-3 text-center">
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                          st.status === 'active'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : st.status === 'graduated'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {st.status === 'active' ? 'Оқуда' : st.status === 'graduated' ? 'Түлек' : 'Ауысқан'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
-                          onClick={() => handleDelete(st.id, st.fullName)}
-                          className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700"
-                          title="Өшіру"
+                          onClick={() => setInspectedStudent(st)}
+                          className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          Профиль
                         </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+                        {canManageStudent && (
+                          <button
+                            onClick={() => handleDelete(st.id, st.fullName)}
+                            className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700"
+                            title="Өшіру"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
@@ -363,11 +441,14 @@ export const StudentManager: React.FC = () => {
                     onChange={(e) => setNewClassId(e.target.value)}
                     className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62]"
                   >
-                    {classes.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} сыныбы
-                      </option>
-                    ))}
+                    {allowedClasses.map((c) => {
+                      const count = storage.getClassStudentCount(c.id);
+                      return (
+                        <option key={c.id} value={c.id} disabled={count >= 26}>
+                          {c.name} сыныбы ({count} / 26 оқушы){count >= 26 ? ' — ТОЛЫ' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
@@ -381,6 +462,10 @@ export const StudentManager: React.FC = () => {
                     className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62]"
                   />
                 </div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-[#FFF8E7] border border-[#FFE9A8] text-[11px] text-amber-900 font-medium">
+                <span className="font-bold">Шектеу:</span> Сынып шегі 26 оқушы. Таңдалған сыныпта қазір: {storage.getClassStudentCount(newClassId)} / 26 оқушы.
               </div>
 
               <div>

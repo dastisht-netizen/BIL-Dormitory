@@ -89,7 +89,7 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({
           userName: currentUser.name,
           userRole: currentUser.role,
           action: 'UPDATE_PASSWORD',
-          entityType: 'user',
+          entityType: 'system',
           entityId: currentUser.id,
           previousValue: '***',
           newValue: '***',
