@@ -78,7 +78,13 @@ export const EducatorDashboard: React.FC = () => {
     const allClasses = storage.getClasses();
     const available = isAdmin
       ? allClasses
-      : allClasses.filter((c) => currentUser.assignedClassIds?.includes(c.id));
+      : allClasses.filter(
+          (c) =>
+            currentUser.assignedClassIds?.includes(c.id) ||
+            c.educatorId === currentUser.id ||
+            c.assistantEducatorId === currentUser.id ||
+            c.additionalStaffIds?.includes(currentUser.id)
+        );
     setClasses(available);
 
     if (available.length > 0 && (!selectedClassId || !available.find((c) => c.id === selectedClassId))) {

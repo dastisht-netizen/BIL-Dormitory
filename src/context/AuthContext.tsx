@@ -128,11 +128,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const canAccessClass = (classId: string): boolean => {
     if (isAdmin) return true;
+    const cls = storage.getClasses().find((c) => c.id === classId);
     if (isEducator) {
-      return !!currentUser.assignedClassIds?.includes(classId);
+      return !!(
+        currentUser.assignedClassIds?.includes(classId) ||
+        cls?.educatorId === currentUser.id ||
+        cls?.assistantEducatorId === currentUser.id ||
+        cls?.additionalStaffIds?.includes(currentUser.id)
+      );
     }
     if (isClassTeacher) {
-      return !!currentUser.assignedClassIds?.includes(classId);
+      return !!(
+        currentUser.assignedClassIds?.includes(classId) ||
+        cls?.classTeacherId === currentUser.id ||
+        cls?.additionalStaffIds?.includes(currentUser.id)
+      );
     }
     return false;
   };

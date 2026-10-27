@@ -74,12 +74,17 @@ export const ClassTeacherDashboard: React.FC = () => {
     const allClasses = storage.getClasses();
     const available = isAdmin
       ? allClasses
-      : allClasses.filter((c) => currentUser.assignedClassIds?.includes(c.id) || c.classTeacherId === currentUser.id);
+      : allClasses.filter(
+          (c) =>
+            currentUser.assignedClassIds?.includes(c.id) ||
+            c.classTeacherId === currentUser.id ||
+            c.additionalStaffIds?.includes(currentUser.id)
+        );
     setClasses(available);
     setSubjects(storage.getSubjects());
 
-    // If current user is class teacher, select their class
-    if (available.length > 0) {
+    // If current user is class teacher, select their class or preserve valid selection
+    if (available.length > 0 && (!selectedClassId || !available.find((c) => c.id === selectedClassId))) {
       setSelectedClassId(available[0].id);
     }
   }, [currentUser, isAdmin]);
@@ -297,9 +302,18 @@ export const ClassTeacherDashboard: React.FC = () => {
 
         {/* Filters & Export buttons */}
         <div className="flex flex-wrap items-center gap-3">
-          {isAdmin && (
-            <div>
-              <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.filterClass}</label>
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 mb-1">{t.filterClass}</label>
+            {classes.length === 0 ? (
+              <span className="text-xs text-rose-500 font-bold bg-rose-50 px-3 py-2 rounded-xl border border-rose-200 block">
+                Сынып бекітілмеген
+              </span>
+            ) : !isAdmin && classes.length === 1 ? (
+              <div className="px-3.5 py-2 rounded-xl text-xs font-black bg-blue-50 border border-blue-200 text-blue-800 flex items-center gap-1.5 shadow-2xs">
+                <GraduationCap className="w-4 h-4 text-blue-600" />
+                <span>{classes[0].name} сыныбы (Бекітілген)</span>
+              </div>
+            ) : (
               <select
                 value={selectedClassId}
                 onChange={(e) => setSelectedClassId(e.target.value)}
@@ -311,8 +325,8 @@ export const ClassTeacherDashboard: React.FC = () => {
                   </option>
                 ))}
               </select>
-            </div>
-          )}
+            )}
+          </div>
 
           <div className="flex items-center gap-2 pt-1 sm:pt-4">
             <button
