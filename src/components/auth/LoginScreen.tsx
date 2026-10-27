@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Shield,
   Lock,
@@ -11,7 +11,6 @@ import {
   Globe,
   GraduationCap,
   CheckCircle2,
-  BookOpen,
   KeyRound,
   Sparkles,
 } from 'lucide-react';
@@ -20,6 +19,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { Language } from '../../types';
 import { NavTab } from '../common/Sidebar';
+import { PasswordRecoveryModal } from './PasswordRecoveryModal';
 
 interface LoginScreenProps {
   onLoginSuccess?: (targetTab: NavTab) => void;
@@ -34,6 +34,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Password Recovery state
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+  const [recoveryToken, setRecoveryToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      if (hash.includes('type=recovery') && hash.includes('token=')) {
+        const params = new URLSearchParams(hash.replace('#', ''));
+        const token = params.get('token');
+        if (token) {
+          setRecoveryToken(token);
+          setShowRecoveryModal(true);
+        }
+      }
+    }
+  }, []);
 
   const languages: { code: Language; name: string; flag: string }[] = [
     { code: 'kk', name: 'Қазақша', flag: '🇰🇿' },
@@ -79,11 +97,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!iin.trim()) {
-      setError('12 таңбалы ЖСН (ИИН) енгізіңіз');
-      return;
-    }
-    if (iin.trim().length !== 12) {
-      setError('ЖСН 12 саннан тұруы тиіс');
+      setError('12 таңбалы ЖСН (ИИН) немесе электрондық поштаны енгізіңіз');
       return;
     }
     if (!password.trim()) {
@@ -152,7 +166,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 Жүйеге кіру
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                Қызметкердің 12 таңбалы ЖСН (ИИН) мен берілген құпиясөзін енгізіңіз
+                Қызметкердің 12 таңбалы ЖСН (ИИН) немесе поштасы мен құпиясөзін енгізіңіз
               </p>
             </div>
 
@@ -167,22 +181,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-bold text-slate-300">
-                    12 таңбалы ЖСН (ИИН)
+                    Логин (12 таңбалы ЖСН немесе Email)
                   </label>
                   <span className={`text-[10px] font-mono ${iin.length === 12 ? 'text-emerald-400 font-bold' : 'text-slate-400'}`}>
-                    {iin.length}/12 таңба
+                    {/^\d+$/.test(iin) ? `${iin.length}/12 таңба` : ''}
                   </span>
                 </div>
                 <div className="relative">
                   <UserCheck className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
-                    inputMode="numeric"
                     required
-                    maxLength={12}
                     value={iin}
                     onChange={(e) => handleIinChange(e.target.value)}
-                    placeholder="ЖСН енгізіңіз (12 сан)"
+                    placeholder="ЖСН (12 сан) немесе email"
                     className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-900/80 border border-slate-700 text-sm font-mono tracking-wider text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#4338CA] focus:border-transparent transition"
                   />
                 </div>
@@ -218,10 +230,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 </div>
               </div>
 
+              {/* Forgot Password Button */}
+              <div className="flex items-center justify-end pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => setShowRecoveryModal(true)}
+                  className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition flex items-center gap-1 cursor-pointer py-1"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>Құпиясөзді ұмыттыңыз ба?</span>
+                </button>
+              </div>
+
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#4338CA] to-[#6366F1] hover:from-[#3730A3] hover:to-[#4F46E5] text-white font-extrabold text-sm shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#4338CA] to-[#6366F1] hover:from-[#3730A3] hover:to-[#4F46E5] text-white font-extrabold text-sm shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-1"
               >
                 {isLoading ? (
                   <>
@@ -240,7 +264,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
             <div className="mt-6 pt-5 border-t border-slate-800 text-center">
               <p className="text-[11px] text-slate-400">
-                Жүйеге кіру деректерін алу немесе қалпына келтіру үшін мектеп әкімшісіне немесе жатақхана меңгерушісіне хабарласыңыз.
+                Құпиясөзді ұмытқан жағдайда жоғарыдағы батырма арқылы сілтеме алып, өзіңіз қалпына келтіре аласыз немесе жатақхана меңгерушісіне хабарласыңыз.
               </p>
             </div>
           </div>
@@ -302,10 +326,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-white">
-                    Қауіпсіздік және деректерді қорғау
+                    Құпиясөзді қауіпсіз қалпына келтіру
                   </h4>
                   <p className="text-[11px] text-slate-400 mt-0.5 leading-normal">
-                    Бөгде тұлғаларға қызметкерлер логиндері мен құпиясөздері көрсетілмейді. Әр қызметкердің кіруі мен әрекеттері аудит журналында тіркеледі.
+                    Құпиясөздер ешқашан ашық сақталмайды. Пайдаланушы поштасына ресми сілтеме алып, жаңа құпиясөз орната алады.
                   </p>
                 </div>
               </div>
@@ -318,6 +342,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           </div>
         </div>
       </div>
+
+      {/* Password Recovery Modal */}
+      <PasswordRecoveryModal
+        isOpen={showRecoveryModal}
+        onClose={() => {
+          setShowRecoveryModal(false);
+          setRecoveryToken(null);
+          if (typeof window !== 'undefined' && window.location.hash.includes('type=recovery')) {
+            window.location.hash = '';
+          }
+        }}
+        initialToken={recoveryToken}
+        onPasswordResetSuccess={(updatedUser) => {
+          setIin(updatedUser.iin || updatedUser.email);
+          setPassword(updatedUser.password || '');
+          executeLogin(updatedUser.iin || updatedUser.email, updatedUser.password || '');
+        }}
+      />
 
       {/* Footer */}
       <div className="max-w-6xl w-full mx-auto text-center text-xs text-slate-500 border-t border-slate-800/80 pt-4 z-10 flex flex-col sm:flex-row items-center justify-between gap-2">

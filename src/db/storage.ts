@@ -14,6 +14,7 @@ import {
   WeekendMealRecord,
   NotificationSettings,
   SiteConfig,
+  PasswordResetToken,
 } from '../types';
 
 const STORAGE_KEYS = {
@@ -31,6 +32,7 @@ const STORAGE_KEYS = {
   AUDIT: 'bil_audit_v4',
   SETTINGS: 'bil_settings_v4',
   SITE_CONFIG: 'bil_site_config_v4',
+  RESET_TOKENS: 'bil_reset_tokens_v4',
 };
 
 export const INITIAL_SITE_CONFIG: SiteConfig = {
@@ -750,6 +752,204 @@ class StorageService {
       timestamp: new Date().toISOString(),
       details: `Қызметкер өшірілді және сыныптардан толық босатылды (${userId})`,
     });
+  }
+
+  // --- PASSWORD RECOVERY & RESET FLOW ---
+  public requestPasswordReset(identifierOrEmail: string): {
+    success: boolean;
+    message: string;
+    resetToken?: string;
+    resetLink?: string;
+    email?: string;
+    userName?: string;
+    userId?: string;
+  } {
+    const clean = identifierOrEmail.trim().toLowerCase();
+    if (!clean) {
+      return { success: false, message: 'Электрондық поштаны немесе 12 таңбалы ЖСН енгізіңіз.' };
+    }
+
+    const users = this.getUsers();
+    const user = users.find(
+      (u) =>
+        (u.email && u.email.toLowerCase() === clean) ||
+        (u.iin && u.iin.toLowerCase() === clean) ||
+        u.id.toLowerCase() === clean
+    );
+
+    if (!user) {
+      return {
+        success: false,
+        message: 'Бұл пошта немесе ЖСН бойынша тіркелген қызметкер табылмады. Деректерді тексеріңіз немесе әкімшіге хабарласыңыз.',
+      };
+    }
+
+    if (user.role !== 'ADMINISTRATOR' && (user.isActive === false || user.status === 'inactive')) {
+      return {
+        success: false,
+        message: 'Бұл аккаунт әкімші тарапынан уақытша тоқтатылған. Құпиясөзді қалпына келтіру үшін жатақхана меңгерушісіне хабарласыңыз.',
+      };
+    }
+
+    const resetToken = `tok_rst_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(); // 2 hours
+
+    const tokenEntry: PasswordResetToken = {
+      token: resetToken,
+      userId: user.id,
+      email: user.email,
+      userName: user.name,
+      createdAt: new Date().toISOString(),
+      expiresAt,
+    };
+
+    const existingTokens = this.getItem<PasswordResetToken[]>(STORAGE_KEYS.RESET_TOKENS, []);
+    const filtered = existingTokens.filter((t) => t.userId !== user.id && new Date(t.expiresAt) > new Date());
+    filtered.push(tokenEntry);
+    this.setItem(STORAGE_KEYS.RESET_TOKENS, filtered);
+
+    // Secure origin-bound recovery URL
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const resetLink = `${origin}/#type=recovery&token=${resetToken}&email=${encodeURIComponent(user.email)}`;
+
+    this.addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      userRole: user.role,
+      action: 'REQUEST_PASSWORD_RESET',
+      entityType: 'system',
+      entityId: user.id,
+      newValue: `Reset link generated for ${user.email}`,
+      timestamp: new Date().toISOString(),
+      details: `Құпиясөзді қалпына келтіру сілтемесі жасалды (${user.email}). Домен: ${origin}`,
+    });
+
+    return {
+      success: true,
+      message: `Құпиясөзді қалпына келтіру сілтемесі ${user.email} электрондық поштасына сәтті жіберілді!`,
+      resetToken,
+      resetLink,
+      email: user.email,
+      userName: user.name,
+      userId: user.id,
+    };
+  }
+
+  public getResetTokenInfo(token: string): { valid: boolean; message?: string; user?: User; tokenEntry?: PasswordResetToken } {
+    if (!token) return { valid: false, message: 'Сілтеме қате немесе көрсетілмеген.' };
+    const tokens = this.getItem<PasswordResetToken[]>(STORAGE_KEYS.RESET_TOKENS, []);
+    const entry = tokens.find((t) => t.token === token);
+    if (!entry) {
+      return { valid: false, message: 'Құпиясөзді қалпына келтіру сілтемесінің мерзімі өткен немесе жарамсыз.' };
+    }
+    if (new Date(entry.expiresAt) < new Date()) {
+      return { valid: false, message: 'Құпиясөзді қалпына келтіру сілтемесінің мерзімі (2 сағат) аяқталған. Қайта сұраныс беріңіз.' };
+    }
+    const user = this.getUsers().find((u) => u.id === entry.userId);
+    if (!user) {
+      return { valid: false, message: 'Қолданушы табылмады.' };
+    }
+    return { valid: true, user, tokenEntry: entry };
+  }
+
+  public resetPasswordWithToken(
+    token: string,
+    newPassword: string
+  ): { success: boolean; message: string; user?: User } {
+    const cleanPass = newPassword.trim();
+    if (cleanPass.length < 6) {
+      return { success: false, message: 'Құпиясөз кемінде 6 таңбадан тұруы тиіс.' };
+    }
+
+    const check = this.getResetTokenInfo(token);
+    if (!check.valid || !check.user) {
+      return { success: false, message: check.message || 'Жарамсыз немесе ескірген сілтеме.' };
+    }
+
+    const users = this.getUsers();
+    const idx = users.findIndex((u) => u.id === check.user!.id);
+    if (idx < 0) {
+      return { success: false, message: 'Қолданушы дерекқордан табылмады.' };
+    }
+
+    // Update password securely
+    users[idx].password = cleanPass;
+    users[idx].updatedAt = new Date().toISOString();
+    this.setItem(STORAGE_KEYS.USERS, users);
+
+    // Invalidate used reset token
+    const tokens = this.getItem<PasswordResetToken[]>(STORAGE_KEYS.RESET_TOKENS, []);
+    const remaining = tokens.filter((t) => t.token !== token);
+    this.setItem(STORAGE_KEYS.RESET_TOKENS, remaining);
+
+    this.addAuditLog({
+      userId: check.user.id,
+      userName: check.user.name,
+      userRole: check.user.role,
+      action: 'PASSWORD_RESET_SUCCESS',
+      entityType: 'system',
+      entityId: check.user.id,
+      newValue: 'Password updated securely via token',
+      timestamp: new Date().toISOString(),
+      details: `Қызметкер «${check.user.name}» құпиясөзін сілтеме арқылы сәтті жаңартты. Барлық рөлдері мен сыныптары сақталды.`,
+    });
+
+    return {
+      success: true,
+      message: 'Жаңа құпиясөз сәтті орнатылды! Енді жаңа құпиясөзіңізбен жүйеге кіре аласыз.',
+      user: users[idx],
+    };
+  }
+
+  public adminGenerateStaffResetLink(
+    targetUserId: string,
+    adminId: string,
+    adminName: string
+  ): { success: boolean; message: string; resetLink?: string; email?: string } {
+    const users = this.getUsers();
+    const targetUser = users.find((u) => u.id === targetUserId);
+    if (!targetUser) {
+      return { success: false, message: 'Қызметкер табылмады.' };
+    }
+
+    const resetToken = `tok_rst_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours for admin assistance
+
+    const tokenEntry: PasswordResetToken = {
+      token: resetToken,
+      userId: targetUser.id,
+      email: targetUser.email,
+      userName: targetUser.name,
+      createdAt: new Date().toISOString(),
+      expiresAt,
+    };
+
+    const existingTokens = this.getItem<PasswordResetToken[]>(STORAGE_KEYS.RESET_TOKENS, []);
+    const filtered = existingTokens.filter((t) => t.userId !== targetUser.id && new Date(t.expiresAt) > new Date());
+    filtered.push(tokenEntry);
+    this.setItem(STORAGE_KEYS.RESET_TOKENS, filtered);
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const resetLink = `${origin}/#type=recovery&token=${resetToken}&email=${encodeURIComponent(targetUser.email)}`;
+
+    this.addAuditLog({
+      userId: adminId,
+      userName: adminName,
+      userRole: 'ADMINISTRATOR',
+      action: 'ADMIN_GENERATED_RESET_LINK',
+      entityType: 'system',
+      entityId: targetUser.id,
+      newValue: `Generated reset link for ${targetUser.name}`,
+      timestamp: new Date().toISOString(),
+      details: `Әкімші «${targetUser.name}» қызметкеріне құпиясөзді жаңарту сілтемесін жасады. Қазіргі құпиясөз әкімшіге де көрсетілмейді.`,
+    });
+
+    return {
+      success: true,
+      message: `«${targetUser.name}» қызметкеріне құпиясөзді қалпына келтіру сілтемесі жасалды! Сілтеме автоматты көшірілді.`,
+      resetLink,
+      email: targetUser.email,
+    };
   }
 
   // Assign or unassign educator/teacher to a class

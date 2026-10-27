@@ -24,6 +24,15 @@ export interface User {
   updatedAt?: string;
 }
 
+export interface PasswordResetToken {
+  token: string;
+  userId: string;
+  email: string;
+  userName: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
 export interface SiteConfig {
   schoolName: string;
   appTitle: string;

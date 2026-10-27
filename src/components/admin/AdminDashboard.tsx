@@ -144,16 +144,14 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
     setVisiblePasswords((prev) => ({ ...prev, [userId]: !prev[userId] }));
   };
 
-  const resetStaffPassword = (userId: string, userName: string) => {
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const newPass = `BIL#${randomNum}`;
-    const user = users.find((u) => u.id === userId);
-    if (!user) return;
-
-    const updatedUser: User = { ...user, password: newPass };
-    storage.saveUser(updatedUser, currentUser.id, currentUser.name);
-    loadData();
-    showNotification(`«${userName}» қызметкеріне жаңа құпиясөз берілді: ${newPass}`);
+  const handleAdminSendResetLink = (userId: string, userName: string) => {
+    const res = storage.adminGenerateStaffResetLink(userId, currentUser.id, currentUser.name);
+    if (res.success && res.resetLink) {
+      navigator.clipboard.writeText(res.resetLink);
+      showNotification(`«${userName}» қызметкеріне құпиясөзді қалпына келтіру сілтемесі жасалды және көшірілді! (${res.email})`);
+    } else {
+      showNotification(res.message);
+    }
   };
 
   const handleOpenUserModal = (userToEdit?: User, presetRole?: Role, presetClassId?: string) => {
@@ -165,7 +163,7 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
       setNewSecondaryRole(userToEdit.secondaryRole || '');
       setNewAssignedClass(userToEdit.assignedClassIds?.[0] || '');
       setNewUserIin(userToEdit.iin || '');
-      setNewUserPassword(userToEdit.password || '');
+      setNewUserPassword(''); // Protected: do not expose existing plaintext password
       setNewUserEmail(userToEdit.email || '');
       setNewUserActive(userToEdit.isActive !== false && userToEdit.status !== 'inactive');
     } else {
@@ -387,7 +385,7 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
     showNotification(
       editingUser
         ? `«${userToSave.name}» қызметкерінің мәліметтері сәтті жаңартылды!`
-        : `Қызметкер «${userToSave.name}» сәтті тіркелді! Логин (ЖСН): ${cleanIin} | Құпиясөз: ${passToUse}`
+        : `Қызметкер «${userToSave.name}» сәтті тіркелді! Логин (ЖСН): ${cleanIin}`
     );
   };
 
@@ -1677,7 +1675,7 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
                       <th className="py-3 px-3">Бекітілген сыныбы</th>
                       <th className="py-3 px-3">Мәртебесі</th>
                       <th className="py-3 px-3">Логин (ЖСН)</th>
-                      <th className="py-3 px-3">Құпиясөз</th>
+                      <th className="py-3 px-3">Құпиясөз (Қауіпсіздік)</th>
                       <th className="py-3 px-3">Телефон</th>
                       <th className="py-3 px-3 text-right">Әрекеттер (Басқару)</th>
                     </tr>
@@ -1803,29 +1801,19 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
                             </div>
                           </td>
 
-                          {/* Generated Password */}
+                          {/* Protected Password & Reset Link Action */}
                           <td className="py-3.5 px-3">
                             <div className="flex items-center gap-1.5">
-                              <div className="px-2 py-1 rounded-lg bg-indigo-50/70 border border-indigo-100 font-mono font-bold text-indigo-900 text-xs flex items-center gap-1">
-                                <span>{isPassVisible ? userPassword : '••••••••'}</span>
-                              </div>
+                              <span className="px-2 py-1 rounded-lg bg-slate-100 font-mono text-slate-400 font-bold text-xs tracking-widest border border-slate-200">
+                                ••••••••
+                              </span>
                               <button
-                                onClick={() => togglePasswordVisibility(u.id)}
-                                className="p-1 text-slate-400 hover:text-slate-600 rounded transition cursor-pointer"
-                                title={isPassVisible ? 'Жасыру' : 'Көрсету'}
+                                onClick={() => handleAdminSendResetLink(u.id, u.name)}
+                                className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-[#4338CA] border border-indigo-200 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                                title="Қызметкерге құпиясөзді қалпына келтіру сілтемесін жасау/көшіру"
                               >
-                                {isPassVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                              </button>
-                              <button
-                                onClick={() => copyToClipboard(userPassword, `pass-${u.id}`)}
-                                className="p-1 text-slate-400 hover:text-indigo-600 rounded transition cursor-pointer"
-                                title="Құпиясөзді көшіріп алу"
-                              >
-                                {copiedKey === `pass-${u.id}` ? (
-                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                ) : (
-                                  <Copy className="w-3.5 h-3.5" />
-                                )}
+                                <KeyRound className="w-3.5 h-3.5 text-[#4338CA]" />
+                                <span>Сілтеме</span>
                               </button>
                             </div>
                           </td>
@@ -2616,39 +2604,58 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
               <div className="p-3.5 rounded-2xl bg-[#EEF2FF]/60 border border-indigo-100 space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-extrabold text-[#0F172A]">
-                    Уақытша құпиясөз (Password) <span className="text-rose-500">*</span>
+                    {editingUser ? 'Құпиясөзді өзгерту (Міндетті емес)' : 'Уақытша құпиясөз (Password) *'}
                   </label>
-                  <button
-                    type="button"
-                    onClick={generateSecurePassword}
-                    className="px-2.5 py-1 rounded-lg bg-[#4338CA] text-white text-[11px] font-extrabold hover:bg-[#3730A3] transition flex items-center gap-1 shadow-2xs"
-                  >
-                    <KeyRound className="w-3.5 h-3.5 text-[#FFE9A8]" />
-                    <span>Құпиясөз жасау (Generate)</span>
-                  </button>
+                  {editingUser ? (
+                    <button
+                      type="button"
+                      onClick={() => handleAdminSendResetLink(editingUser.id, editingUser.name)}
+                      className="px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-[11px] font-extrabold hover:bg-indigo-700 transition flex items-center gap-1 shadow-2xs cursor-pointer"
+                    >
+                      <KeyRound className="w-3.5 h-3.5 text-[#FFE9A8]" />
+                      <span>Қалпына келтіру сілтемесін беру</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={generateSecurePassword}
+                      className="px-2.5 py-1 rounded-lg bg-[#4338CA] text-white text-[11px] font-extrabold hover:bg-[#3730A3] transition flex items-center gap-1 shadow-2xs"
+                    >
+                      <KeyRound className="w-3.5 h-3.5 text-[#FFE9A8]" />
+                      <span>Құпиясөз жасау (Generate)</span>
+                    </button>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <input
-                    type="text"
-                    required
+                    type={editingUser ? 'password' : 'text'}
+                    required={!editingUser}
                     value={newUserPassword}
                     onChange={(e) => setNewUserPassword(e.target.value)}
-                    placeholder="BIL#8492"
+                    placeholder={editingUser ? '•••••••• (Өзгерту үшін жаңасын жазыңыз)' : 'BIL#8492'}
                     className="w-full px-3.5 py-2 text-sm font-mono font-black text-indigo-950 rounded-xl border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-[#4338CA] bg-white tracking-wider"
                   />
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard(newUserPassword, 'modal-pass')}
-                    className="px-3 py-2 rounded-xl bg-white border border-indigo-200 hover:bg-indigo-50 text-indigo-800 text-xs font-bold transition flex items-center gap-1 shrink-0"
-                    title="Көшіріп алу"
-                  >
-                    {copiedKey === 'modal-pass' ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                    <span>Көшіру</span>
-                  </button>
+                  {!editingUser && (
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(newUserPassword, 'modal-pass')}
+                      className="px-3 py-2 rounded-xl bg-white border border-indigo-200 hover:bg-indigo-50 text-indigo-800 text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                      title="Көшіріп алу"
+                    >
+                      {copiedKey === 'modal-pass' ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                      <span>Көшіру</span>
+                    </button>
+                  )}
                 </div>
-                <p className="text-[11px] text-indigo-900/80">
-                  Жүйе сенімді уақытша құпиясөз жасайды. Қызметкер алғашқы рет кіргенде өзі өзгерте алады.
-                </p>
+                {editingUser ? (
+                  <p className="text-[10px] text-slate-500">
+                    Қауіпсіздік ережесі бойынша қызметкерлердің қазіргі құпиясөзі әкімшіге де көрсетілмейді. Бос қалдырсаңыз, қазіргі құпиясөзі өзгеріссіз қалады.
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-indigo-900/80">
+                    Жүйе сенімді уақытша құпиясөз жасайды. Қызметкер алғашқы рет кіргенде өзі өзгерте алады.
+                  </p>
+                )}
               </div>
 
               {/* Contact Phone & Email */}
