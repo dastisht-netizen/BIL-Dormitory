@@ -111,13 +111,13 @@ export const INITIAL_USERS: User[] = [
 
 // Initial Classes (Бастапқы күйде барлық сыныптар таза, қызметкерлерді әкімші өзі бекітеді)
 export const INITIAL_CLASSES: SchoolClass[] = [
-  { id: 'cls-7a', name: '7A', grade: 7, academicYearId: 'ay-2026-2027', educatorId: undefined, classTeacherId: undefined },
-  { id: 'cls-7b', name: '7B', grade: 7, academicYearId: 'ay-2026-2027', educatorId: undefined, classTeacherId: undefined },
-  { id: 'cls-8a', name: '8A', grade: 8, academicYearId: 'ay-2026-2027', educatorId: undefined, classTeacherId: undefined },
-  { id: 'cls-8b', name: '8B', grade: 8, academicYearId: 'ay-2026-2027', educatorId: undefined, classTeacherId: undefined },
-  { id: 'cls-9a', name: '9A', grade: 9, academicYearId: 'ay-2026-2027', educatorId: undefined, classTeacherId: undefined },
-  { id: 'cls-10a', name: '10A', grade: 10, academicYearId: 'ay-2026-2027', educatorId: undefined, classTeacherId: undefined },
-  { id: 'cls-11a', name: '11A', grade: 11, academicYearId: 'ay-2026-2027', educatorId: undefined, classTeacherId: undefined },
+  { id: 'cls-7a', name: '7A', grade: 7, academicYearId: 'ay-2026-2027', academicYearName: '2026–2027', educatorId: undefined, classTeacherId: undefined, isActive: true, status: 'active' },
+  { id: 'cls-7b', name: '7B', grade: 7, academicYearId: 'ay-2026-2027', academicYearName: '2026–2027', educatorId: undefined, classTeacherId: undefined, isActive: true, status: 'active' },
+  { id: 'cls-8a', name: '8A', grade: 8, academicYearId: 'ay-2026-2027', academicYearName: '2026–2027', educatorId: undefined, classTeacherId: undefined, isActive: true, status: 'active' },
+  { id: 'cls-8b', name: '8B', grade: 8, academicYearId: 'ay-2026-2027', academicYearName: '2026–2027', educatorId: undefined, classTeacherId: undefined, isActive: true, status: 'active' },
+  { id: 'cls-9a', name: '9A', grade: 9, academicYearId: 'ay-2026-2027', academicYearName: '2026–2027', educatorId: undefined, classTeacherId: undefined, isActive: true, status: 'active' },
+  { id: 'cls-10a', name: '10A', grade: 10, academicYearId: 'ay-2026-2027', academicYearName: '2026–2027', educatorId: undefined, classTeacherId: undefined, isActive: true, status: 'active' },
+  { id: 'cls-11a', name: '11A', grade: 11, academicYearId: 'ay-2026-2027', academicYearName: '2026–2027', educatorId: undefined, classTeacherId: undefined, isActive: true, status: 'active' },
 ];
 
 // Initial Students (Таза база: алдын ала енгізілген оқушы жоқ, 0 оқушы)
@@ -374,22 +374,22 @@ class StorageService {
   }
 
   // --- CLASSES ---
-  public getClasses(): SchoolClass[] {
+  public getClasses(onlyActive?: boolean): SchoolClass[] {
     const list = this.getItem<SchoolClass[]>(STORAGE_KEYS.CLASSES, INITIAL_CLASSES);
     let changed = false;
 
-    // Ensure all 7 classes (7A-11A) exist in database
-    INITIAL_CLASSES.forEach((defaultClass) => {
-      const idx = list.findIndex((c) => c.id === defaultClass.id);
-      if (idx === -1) {
-        list.push({
-          id: defaultClass.id,
-          name: defaultClass.name,
-          grade: defaultClass.grade,
-          academicYearId: defaultClass.academicYearId,
-          educatorId: undefined,
-          classTeacherId: undefined,
-        });
+    // Ensure all items have isActive, status, and academicYearName defined
+    list.forEach((cls) => {
+      if (cls.isActive === undefined) {
+        cls.isActive = true;
+        changed = true;
+      }
+      if (!cls.status) {
+        cls.status = cls.isActive ? 'active' : 'inactive';
+        changed = true;
+      }
+      if (!cls.academicYearName) {
+        cls.academicYearName = '2026–2027';
         changed = true;
       }
     });
@@ -397,28 +397,188 @@ class StorageService {
     if (changed) {
       this.setItem(STORAGE_KEYS.CLASSES, list);
     }
+
+    if (onlyActive) {
+      return list.filter((c) => c.isActive !== false && c.status !== 'inactive');
+    }
     return list;
   }
 
-  public saveClass(cls: SchoolClass, userId: string, userName: string): void {
+  public saveClass(cls: SchoolClass, userId: string, userName: string): SchoolClass {
     const classes = this.getClasses();
     const idx = classes.findIndex((c) => c.id === cls.id);
+    const prevClass = idx >= 0 ? classes[idx] : null;
+
+    const enrichedClass: SchoolClass = {
+      ...cls,
+      name: cls.name.trim().toUpperCase(),
+      isActive: cls.isActive !== undefined ? cls.isActive : true,
+      status: cls.isActive === false || cls.status === 'inactive' ? 'inactive' : 'active',
+      academicYearName: cls.academicYearName || '2026–2027',
+      updatedAt: new Date().toISOString(),
+      createdAt: cls.createdAt || (prevClass?.createdAt || new Date().toISOString()),
+    };
+
     if (idx >= 0) {
-      classes[idx] = cls;
+      classes[idx] = enrichedClass;
     } else {
-      classes.push(cls);
+      classes.push(enrichedClass);
     }
     this.setItem(STORAGE_KEYS.CLASSES, classes);
+
+    // Sync staff assignedClassIds in users
+    const users = this.getUsers();
+    let usersModified = false;
+
+    // Collect all staff currently assigned to this class
+    const newAssignedStaffIds = new Set<string>();
+    if (enrichedClass.educatorId) newAssignedStaffIds.add(enrichedClass.educatorId);
+    if (enrichedClass.classTeacherId) newAssignedStaffIds.add(enrichedClass.classTeacherId);
+    if (enrichedClass.assistantEducatorId) newAssignedStaffIds.add(enrichedClass.assistantEducatorId);
+    if (enrichedClass.additionalStaffIds) {
+      enrichedClass.additionalStaffIds.forEach((id) => newAssignedStaffIds.add(id));
+    }
+
+    // Collect previously assigned staff
+    const oldAssignedStaffIds = new Set<string>();
+    if (prevClass?.educatorId) oldAssignedStaffIds.add(prevClass.educatorId);
+    if (prevClass?.classTeacherId) oldAssignedStaffIds.add(prevClass.classTeacherId);
+    if (prevClass?.assistantEducatorId) oldAssignedStaffIds.add(prevClass.assistantEducatorId);
+    if (prevClass?.additionalStaffIds) {
+      prevClass.additionalStaffIds.forEach((id) => oldAssignedStaffIds.add(id));
+    }
+
+    // Unlink old staff who are no longer assigned
+    oldAssignedStaffIds.forEach((staffId) => {
+      if (!newAssignedStaffIds.has(staffId)) {
+        const u = users.find((usr) => usr.id === staffId);
+        if (u && u.assignedClassIds) {
+          u.assignedClassIds = u.assignedClassIds.filter((cid) => cid !== enrichedClass.id);
+          u.updatedAt = new Date().toISOString();
+          usersModified = true;
+        }
+      }
+    });
+
+    // Link newly assigned staff
+    newAssignedStaffIds.forEach((staffId) => {
+      const u = users.find((usr) => usr.id === staffId);
+      if (u) {
+        if (!u.assignedClassIds) u.assignedClassIds = [];
+        if (!u.assignedClassIds.includes(enrichedClass.id)) {
+          u.assignedClassIds.push(enrichedClass.id);
+          u.updatedAt = new Date().toISOString();
+          usersModified = true;
+        }
+      }
+    });
+
+    if (usersModified) {
+      this.setItem(STORAGE_KEYS.USERS, users);
+    }
+
     this.addAuditLog({
       userId,
       userName,
       userRole: 'ADMINISTRATOR',
       action: idx >= 0 ? 'UPDATE_CLASS' : 'CREATE_CLASS',
       entityType: 'system',
-      entityId: cls.id,
-      newValue: cls.name,
+      entityId: enrichedClass.id,
+      newValue: `${enrichedClass.name} (${enrichedClass.status})`,
       timestamp: new Date().toISOString(),
+      details: `Сынып «${enrichedClass.name}» сәтті ${idx >= 0 ? 'жаңартылды' : 'қосылды'}. Тәрбиеші: ${enrichedClass.educatorId || 'тағайындалмаған'}, Жетекші: ${enrichedClass.classTeacherId || 'тағайындалмаған'}`,
     });
+
+    return enrichedClass;
+  }
+
+  public deleteClass(
+    classId: string,
+    userId: string,
+    userName: string
+  ): { success: boolean; message: string } {
+    const classes = this.getClasses();
+    const target = classes.find((c) => c.id === classId);
+    if (!target) {
+      return { success: false, message: 'Сынып табылмады' };
+    }
+
+    // 1. Remove from classes list
+    const updatedClasses = classes.filter((c) => c.id !== classId);
+    this.setItem(STORAGE_KEYS.CLASSES, updatedClasses);
+
+    // 2. Unlink from all staff members' assignedClassIds
+    const users = this.getUsers();
+    let usersModified = false;
+    users.forEach((u) => {
+      if (u.assignedClassIds && u.assignedClassIds.includes(classId)) {
+        u.assignedClassIds = u.assignedClassIds.filter((cid) => cid !== classId);
+        u.updatedAt = new Date().toISOString();
+        usersModified = true;
+      }
+    });
+    if (usersModified) {
+      this.setItem(STORAGE_KEYS.USERS, users);
+    }
+
+    // 3. Notice: Оқушылар мен бұрынғы есептер жойылмайды!
+    // Students remain intact; historical roll call, homework, and study attendance records are preserved.
+
+    this.addAuditLog({
+      userId,
+      userName,
+      userRole: 'ADMINISTRATOR',
+      action: 'DELETE_CLASS',
+      entityType: 'system',
+      entityId: classId,
+      newValue: target.name,
+      timestamp: new Date().toISOString(),
+      details: `«${target.name}» сыныбы өшірілді. Оқушылар мен барлық бұрынғы есептер толық сақталды.`,
+    });
+
+    return {
+      success: true,
+      message: `«${target.name}» сыныбы өшірілді. Оқушылар мен барлық бұрынғы есептер дерекқорда толық сақталды.`,
+    };
+  }
+
+  public toggleClassStatus(
+    classId: string,
+    userId: string,
+    userName: string
+  ): { success: boolean; newStatus: boolean; message: string } {
+    const classes = this.getClasses();
+    const target = classes.find((c) => c.id === classId);
+    if (!target) {
+      return { success: false, newStatus: false, message: 'Сынып табылмады' };
+    }
+
+    const currentActive = target.isActive !== false && target.status !== 'inactive';
+    const newActiveState = !currentActive;
+
+    target.isActive = newActiveState;
+    target.status = newActiveState ? 'active' : 'inactive';
+    target.updatedAt = new Date().toISOString();
+
+    this.setItem(STORAGE_KEYS.CLASSES, classes);
+
+    this.addAuditLog({
+      userId,
+      userName,
+      userRole: 'ADMINISTRATOR',
+      action: newActiveState ? 'ACTIVATE_CLASS' : 'DEACTIVATE_CLASS',
+      entityType: 'system',
+      entityId: classId,
+      newValue: newActiveState ? 'active' : 'inactive',
+      timestamp: new Date().toISOString(),
+      details: `«${target.name}» сыныбы ${newActiveState ? 'белсенді етілді' : 'уақытша белсенді емес етілді'}.`,
+    });
+
+    return {
+      success: true,
+      newStatus: newActiveState,
+      message: `«${target.name}» сыныбы ${newActiveState ? 'сәтті белсенді етілді!' : 'уақытша өшірілді (белсенді емес).'}`
+    };
   }
 
   // --- USERS ---

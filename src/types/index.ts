@@ -58,9 +58,16 @@ export interface SchoolClass {
   name: string; // e.g. "7A", "7B", "8A", "9B", "10A", "11A"
   grade: number; // 7, 8, 9, 10, 11
   academicYearId: string;
+  academicYearName?: string; // e.g. "2026–2027"
   educatorId?: string;
   classTeacherId?: string;
+  assistantEducatorId?: string; // Қосымша жауапты тәрбиеші
+  additionalStaffIds?: string[]; // Бір сыныпқа бірнеше жауапты қызметкер тағайындау
   studentCount?: number;
+  isActive?: boolean; // ✅ белсенді / ⏸️ уақытша белсенді емес
+  status?: 'active' | 'inactive';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Subject {

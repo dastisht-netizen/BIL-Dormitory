@@ -39,7 +39,10 @@ import {
   Search,
   Filter,
   ArrowRightLeft,
-  UserPlus
+  UserPlus,
+  Grid,
+  Table,
+  School
 } from 'lucide-react';
 import { NotificationSettings, Role, SchoolClass, Subject, User, SiteConfig } from '../../types';
 import { storage } from '../../db/storage';
@@ -70,12 +73,20 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
   const [subCode, setSubCode] = useState('');
   const [subColor, setSubColor] = useState('#138A62');
 
-  // Class Form State
+  // Class Form & Management State
   const [showClassModal, setShowClassModal] = useState(false);
+  const [editingClass, setEditingClass] = useState<SchoolClass | null>(null);
   const [newClassName, setNewClassName] = useState('');
   const [newClassGrade, setNewClassGrade] = useState(7);
+  const [newClassYearId, setNewClassYearId] = useState('ay-2026-2027');
   const [selectedEducatorId, setSelectedEducatorId] = useState('');
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
+  const [selectedAssistantEducatorId, setSelectedAssistantEducatorId] = useState('');
+  const [newClassActive, setNewClassActive] = useState<boolean>(true);
+  const [classSearchQuery, setClassSearchQuery] = useState('');
+  const [classGradeFilter, setClassGradeFilter] = useState<'ALL' | '7' | '8' | '9' | '10' | '11'>('ALL');
+  const [classStatusFilter, setClassStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [classViewMode, setClassViewMode] = useState<'grid' | 'table'>('table');
 
   // User Form State
   const [showUserModal, setShowUserModal] = useState(false);
@@ -255,22 +266,80 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
   };
 
   // 3. Class Handlers
+  const handleOpenClassModal = (clsToEdit?: SchoolClass) => {
+    if (clsToEdit) {
+      setEditingClass(clsToEdit);
+      setNewClassName(clsToEdit.name);
+      setNewClassGrade(clsToEdit.grade);
+      setNewClassYearId(clsToEdit.academicYearId || 'ay-2026-2027');
+      setSelectedEducatorId(clsToEdit.educatorId || '');
+      setSelectedTeacherId(clsToEdit.classTeacherId || '');
+      setSelectedAssistantEducatorId(clsToEdit.assistantEducatorId || '');
+      setNewClassActive(clsToEdit.isActive !== false && clsToEdit.status !== 'inactive');
+    } else {
+      setEditingClass(null);
+      setNewClassName('');
+      setNewClassGrade(7);
+      setNewClassYearId('ay-2026-2027');
+      setSelectedEducatorId('');
+      setSelectedTeacherId('');
+      setSelectedAssistantEducatorId('');
+      setNewClassActive(true);
+    }
+    setShowClassModal(true);
+  };
+
   const handleSaveClass = (e: React.FormEvent) => {
     e.preventDefault();
-    const newClass: SchoolClass = {
-      id: `cls-${newClassName.toLowerCase()}`,
-      name: newClassName.trim().toUpperCase(),
+    const cleanName = newClassName.trim().toUpperCase();
+    if (!cleanName) {
+      alert('Сынып атауын енгізіңіз (мысалы, 7А немесе 9Б)!');
+      return;
+    }
+
+    const classId = editingClass
+      ? editingClass.id
+      : `cls-${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '') || Date.now()}`;
+
+    const classToSave: SchoolClass = {
+      id: classId,
+      name: cleanName,
       grade: Number(newClassGrade),
-      academicYearId: storage.getCurrentAcademicYear().id,
+      academicYearId: newClassYearId,
+      academicYearName: newClassYearId === 'ay-2025-2026' ? '2025–2026' : '2026–2027',
       educatorId: selectedEducatorId || undefined,
       classTeacherId: selectedTeacherId || undefined,
+      assistantEducatorId: selectedAssistantEducatorId || undefined,
+      additionalStaffIds: selectedAssistantEducatorId ? [selectedAssistantEducatorId] : [],
+      isActive: newClassActive,
+      status: newClassActive ? 'active' : 'inactive',
     };
 
-    storage.saveClass(newClass, currentUser.id, currentUser.name);
+    storage.saveClass(classToSave, currentUser.id, currentUser.name);
     loadData();
     setShowClassModal(false);
-    setNewClassName('');
-    showNotification(`Сынып ${newClass.name} сәтті сақталды!`);
+    showNotification(
+      editingClass
+        ? `«${classToSave.name}» сыныбының мәліметтері сәтті жаңартылды!`
+        : `Жаңа «${classToSave.name}» сыныбы сәтті қосылды!`
+    );
+  };
+
+  const handleDeleteClass = (classId: string, name: string) => {
+    const studentCount = students.filter((s) => s.classId === classId).length;
+    const confirmMessage = `«${name}» сыныбын жүйеден өшіруді растайсыз ба?\n\nБұл сыныпта ${studentCount} оқушы тіркелген.\n\nМАҢЫЗДЫ: Сынып өшірілгенде оның оқушылары мен олардың барлық бұрынғы есептері ДЕРЕКҚОРДАН ӨШІРІЛМЕЙДІ, толық сақталады.`;
+
+    if (confirm(confirmMessage)) {
+      const res = storage.deleteClass(classId, currentUser.id, currentUser.name);
+      loadData();
+      showNotification(res.message);
+    }
+  };
+
+  const handleToggleClassStatus = (cls: SchoolClass) => {
+    const res = storage.toggleClassStatus(cls.id, currentUser.id, currentUser.name);
+    loadData();
+    showNotification(res.message);
   };
 
   // 4. User Handlers
@@ -468,7 +537,7 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
-          <span>Сыныптар ({classes.length})</span>
+          <span>Сыныптарды басқару ({classes.length})</span>
         </button>
 
         <button
@@ -802,200 +871,577 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
         </div>
       )}
 
-      {/* TAB 4: CLASSES & ASSIGNMENTS */}
+      {/* TAB 4: CLASS MANAGEMENT (Сыныптарды басқару) */}
       {activeAdminTab === 'classes' && (
-        <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-xs border border-gray-100 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+        <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-xs border border-gray-100 space-y-5">
+          {/* Header */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-gray-100">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#E6F4EA] text-[#075C42]">
-                  Сыныптарды басқару
+                <span className="text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  Сыныптарды басқару жүйесі
                 </span>
-                <span className="text-xs text-gray-400 font-bold">({classes.length} сынып)</span>
+                <span className="text-xs text-gray-500 font-bold">({classes.length} сынып)</span>
               </div>
-              <h3 className="font-extrabold text-base sm:text-lg text-[#24342D] mt-1">
-                Сыныптарға тәрбиеші мен сынып жетекшіні бекіту
+              <h3 className="font-extrabold text-lg sm:text-xl text-[#0F172A] mt-1.5">
+                Сыныптарды басқару (Class Management)
               </h3>
               <p className="text-xs text-gray-500 mt-0.5">
-                Әр сыныпқа нақты тәрбиеші мен жетекшіні таңдаңыз немесе жаңа адамды тіркеңіз. Өзгеріс жүйеге лезде бекітіледі.
+                Жаңа сынып қосыңыз, атауын өзгертіңіз, тәрбиеші мен жетекшілерді бекітіңіз, уақытша өшіріңіз немесе жойыңыз.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+
+            {/* Quick Action Button */}
+            <div className="flex flex-wrap items-center gap-2">
               <button
-                onClick={() => handleOpenUserModal(undefined, 'EDUCATOR')}
-                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                onClick={() => handleOpenClassModal()}
+                className="px-4 py-2.5 rounded-xl bg-[#075C42] hover:bg-[#054531] text-white text-xs font-extrabold transition flex items-center gap-2 shadow-xs cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ Тәрбиеші тіркеу</span>
-              </button>
-              <button
-                onClick={() => handleOpenUserModal(undefined, 'CLASS_TEACHER')}
-                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ Жетекші тіркеу</span>
+                <Plus className="w-4 h-4 text-[#FFE9A8]" />
+                <span>+ Жаңа сынып қосу</span>
               </button>
             </div>
           </div>
 
-          {/* Classes Cards Grid with Interactive Dropdowns */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {classes.map((cls) => {
-              const edu = users.find((u) => u.id === cls.educatorId);
-              const teacher = users.find((u) => u.id === cls.classTeacherId);
-              const count = students.filter((s) => s.classId === cls.id).length;
+          {/* Metrics Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+              <span className="text-slate-500 font-semibold block text-[11px]">Барлық сыныптар</span>
+              <div className="text-xl font-black text-slate-900 mt-0.5">{classes.length} сынып</div>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
+              <span className="text-emerald-700 font-semibold block text-[11px]">Белсенді сыныптар</span>
+              <div className="text-xl font-black text-emerald-800 mt-0.5">
+                {classes.filter((c) => c.isActive !== false && c.status !== 'inactive').length} сынып
+              </div>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200">
+              <span className="text-amber-800 font-semibold block text-[11px]">Уақытша өшірілген</span>
+              <div className="text-xl font-black text-amber-900 mt-0.5">
+                {classes.filter((c) => c.isActive === false || c.status === 'inactive').length} сынып
+              </div>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200">
+              <span className="text-indigo-800 font-semibold block text-[11px]">Барлық оқушылар</span>
+              <div className="text-xl font-black text-indigo-900 mt-0.5">{students.length} оқушы</div>
+            </div>
+          </div>
 
-              const availableEducators = users.filter((u) => u.role === 'EDUCATOR');
-              const availableTeachers = users.filter((u) => u.role === 'CLASS_TEACHER');
-
-              return (
-                <div
-                  key={cls.id}
-                  className="p-5 rounded-3xl bg-[#F8FAFC] border border-slate-200/90 hover:border-indigo-400 transition shadow-xs flex flex-col justify-between space-y-4"
+          {/* Search, Filter & View Controls */}
+          <div className="p-3.5 rounded-2xl bg-[#F8FAFC] border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={classSearchQuery}
+                onChange={(e) => setClassSearchQuery(e.target.value)}
+                placeholder="Сынып атауы бойынша іздеу (мысалы, 7А, 9, 10Б)..."
+                className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+              />
+              {classSearchQuery && (
+                <button
+                  onClick={() => setClassSearchQuery('')}
+                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 font-bold"
                 >
-                  {/* Class Header */}
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-                    <div className="flex items-center gap-2">
-                      <div className="w-9 h-9 rounded-2xl bg-[#4338CA] text-white flex items-center justify-center font-black text-sm">
-                        {cls.name}
-                      </div>
-                      <div>
-                        <h4 className="font-extrabold text-sm text-[#0F172A]">{cls.name} сыныбы</h4>
-                        <span className="text-[11px] text-slate-400 font-semibold">{cls.grade}-сынып тобы</span>
-                      </div>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-xs shadow-2xs">
-                      {count} / 26 оқушы
-                    </span>
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Grade Filter */}
+              <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200">
+                <button
+                  onClick={() => setClassGradeFilter('ALL')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition ${
+                    classGradeFilter === 'ALL'
+                      ? 'bg-slate-800 text-white shadow-2xs'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  Барлық сынып
+                </button>
+                {(['7', '8', '9', '10', '11'] as const).map((gr) => (
+                  <button
+                    key={gr}
+                    onClick={() => setClassGradeFilter(gr)}
+                    className={`px-2 py-1 rounded-lg font-bold transition ${
+                      classGradeFilter === gr
+                        ? 'bg-[#075C42] text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {gr}
+                  </button>
+                ))}
+              </div>
+
+              {/* Status Filter */}
+              <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200">
+                <button
+                  onClick={() => setClassStatusFilter('ALL')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition ${
+                    classStatusFilter === 'ALL'
+                      ? 'bg-slate-800 text-white shadow-2xs'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  Барлығы
+                </button>
+                <button
+                  onClick={() => setClassStatusFilter('ACTIVE')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition ${
+                    classStatusFilter === 'ACTIVE'
+                      ? 'bg-emerald-700 text-white shadow-2xs'
+                      : 'text-emerald-700 hover:bg-emerald-50'
+                  }`}
+                >
+                  ✅ Белсенді
+                </button>
+                <button
+                  onClick={() => setClassStatusFilter('INACTIVE')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition ${
+                    classStatusFilter === 'INACTIVE'
+                      ? 'bg-amber-700 text-white shadow-2xs'
+                      : 'text-amber-800 hover:bg-amber-50'
+                  }`}
+                >
+                  ⏸️ Өшірулі
+                </button>
+              </div>
+
+              {/* View Switcher */}
+              <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200">
+                <button
+                  onClick={() => setClassViewMode('table')}
+                  className={`p-1.5 rounded-lg transition ${
+                    classViewMode === 'table' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'
+                  }`}
+                  title="Кестелік көрініс"
+                >
+                  <Table className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setClassViewMode('grid')}
+                  className={`p-1.5 rounded-lg transition ${
+                    classViewMode === 'grid' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'
+                  }`}
+                  title="Карточкалық көрініс"
+                >
+                  <Grid className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Render Filtered Classes */}
+          {(() => {
+            const filteredClasses = classes.filter((cls) => {
+              if (classGradeFilter !== 'ALL' && String(cls.grade) !== classGradeFilter) return false;
+              if (classStatusFilter === 'ACTIVE' && (cls.isActive === false || cls.status === 'inactive')) return false;
+              if (classStatusFilter === 'INACTIVE' && cls.isActive !== false && cls.status !== 'inactive') return false;
+              if (classSearchQuery.trim()) {
+                const q = classSearchQuery.toLowerCase();
+                const matchName = cls.name.toLowerCase().includes(q);
+                const matchGrade = String(cls.grade).includes(q);
+                return matchName || matchGrade;
+              }
+              return true;
+            });
+
+            if (filteredClasses.length === 0) {
+              return (
+                <div className="p-8 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 mx-auto flex items-center justify-center mb-3">
+                    <Layers className="w-6 h-6" />
                   </div>
-
-                  {/* Educator Selector Box */}
-                  <div className="p-3 rounded-2xl bg-white border border-emerald-200/80 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-emerald-800 flex items-center gap-1.5">
-                        <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Тәрбиеші:</span>
-                      </span>
-                      {edu ? (
-                        <button
-                          onClick={() => {
-                            storage.assignStaffToClass(cls.id, 'EDUCATOR', undefined, currentUser.id, currentUser.name);
-                            loadData();
-                            showNotification(`${cls.name} сыныбының тәрбиешісі босатылды.`);
-                          }}
-                          className="text-[10px] text-rose-500 hover:text-rose-700 font-bold hover:underline cursor-pointer"
-                        >
-                          Босату
-                        </button>
-                      ) : (
-                        <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded">
-                          Бос
-                        </span>
-                      )}
-                    </div>
-
-                    <select
-                      value={cls.educatorId || ''}
-                      onChange={(e) => {
-                        const val = e.target.value || undefined;
-                        storage.assignStaffToClass(cls.id, 'EDUCATOR', val, currentUser.id, currentUser.name);
-                        loadData();
-                        const assignedPerson = users.find((u) => u.id === val);
-                        showNotification(
-                          val
-                            ? `${cls.name} сыныбына тәрбиеші болып «${assignedPerson?.name}» бекітілді!`
-                            : `${cls.name} сыныбының тәрбиешісі босатылды.`
-                        );
-                      }}
-                      className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-[#F0FDF4] text-slate-800"
+                  <h4 className="font-extrabold text-sm text-slate-800">Сыныптар табылмады</h4>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                    Сүзгіге сәйкес келетін сынып жоқ немесе әлі қосылмаған. «+ Жаңа сынып қосу» батырмасын басып сынып қосыңыз.
+                  </p>
+                  <div className="mt-4">
+                    <button
+                      onClick={() => handleOpenClassModal()}
+                      className="px-4 py-2 rounded-xl bg-[#075C42] hover:bg-[#054531] text-white text-xs font-bold transition flex items-center gap-1.5 mx-auto cursor-pointer"
                     >
-                      <option value="">— Тәрбиеші тағайындалмаған (Бос) —</option>
-                      {availableEducators.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name} (ЖСН: {u.iin})
-                        </option>
-                      ))}
-                    </select>
-
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-[11px] text-slate-400 font-mono">
-                        {edu ? `ЖСН: ${edu.iin} • Пароль: ${edu.password}` : 'Тәрбиеші бекітілмеген'}
-                      </span>
-                      <button
-                        onClick={() => handleOpenUserModal(undefined, 'EDUCATOR', cls.id)}
-                        className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline flex items-center gap-0.5 cursor-pointer"
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>Жаңадан жазу</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Class Teacher Selector Box */}
-                  <div className="p-3 rounded-2xl bg-white border border-blue-200/80 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-blue-800 flex items-center gap-1.5">
-                        <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Сынып жетекшісі:</span>
-                      </span>
-                      {teacher ? (
-                        <button
-                          onClick={() => {
-                            storage.assignStaffToClass(cls.id, 'CLASS_TEACHER', undefined, currentUser.id, currentUser.name);
-                            loadData();
-                            showNotification(`${cls.name} сыныбының жетекшісі босатылды.`);
-                          }}
-                          className="text-[10px] text-rose-500 hover:text-rose-700 font-bold hover:underline cursor-pointer"
-                        >
-                          Босату
-                        </button>
-                      ) : (
-                        <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded">
-                          Бос
-                        </span>
-                      )}
-                    </div>
-
-                    <select
-                      value={cls.classTeacherId || ''}
-                      onChange={(e) => {
-                        const val = e.target.value || undefined;
-                        storage.assignStaffToClass(cls.id, 'CLASS_TEACHER', val, currentUser.id, currentUser.name);
-                        loadData();
-                        const assignedPerson = users.find((u) => u.id === val);
-                        showNotification(
-                          val
-                            ? `${cls.name} сыныбына жетекші болып «${assignedPerson?.name}» бекітілді!`
-                            : `${cls.name} сыныбының жетекшісі босатылды.`
-                        );
-                      }}
-                      className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#EFF6FF] text-slate-800"
-                    >
-                      <option value="">— Жетекші тағайындалмаған (Бос) —</option>
-                      {availableTeachers.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name} (ЖСН: {u.iin})
-                        </option>
-                      ))}
-                    </select>
-
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-[11px] text-slate-400 font-mono">
-                        {teacher ? `ЖСН: ${teacher.iin} • Пароль: ${teacher.password}` : 'Жетекші бекітілмеген'}
-                      </span>
-                      <button
-                        onClick={() => handleOpenUserModal(undefined, 'CLASS_TEACHER', cls.id)}
-                        className="text-[11px] font-bold text-blue-700 hover:text-blue-800 hover:underline flex items-center gap-0.5 cursor-pointer"
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>Жаңадан жазу</span>
-                      </button>
-                    </div>
+                      <Plus className="w-4 h-4 text-[#FFE9A8]" />
+                      <span>+ Жаңа сынып қосу</span>
+                    </button>
                   </div>
                 </div>
               );
-            })}
-          </div>
+            }
+
+            const availableEducators = users.filter((u) => u.role === 'EDUCATOR');
+            const availableTeachers = users.filter((u) => u.role === 'CLASS_TEACHER');
+
+            if (classViewMode === 'table') {
+              return (
+                <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-[#F8FAFC] border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+                        <th className="py-3 px-3.5">Сынып</th>
+                        <th className="py-3 px-3">Оқу жылы</th>
+                        <th className="py-3 px-3">Сынып жетекшісі</th>
+                        <th className="py-3 px-3">Тәрбиешісі</th>
+                        <th className="py-3 px-3">Қосымша қызметкер</th>
+                        <th className="py-3 px-3">Оқушылар</th>
+                        <th className="py-3 px-3">Мәртебесі</th>
+                        <th className="py-3 px-3 text-right">Әрекеттер (Басқару)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {filteredClasses.map((cls) => {
+                        const isInactive = cls.isActive === false || cls.status === 'inactive';
+                        const count = students.filter((s) => s.classId === cls.id).length;
+                        const edu = users.find((u) => u.id === cls.educatorId);
+                        const teacher = users.find((u) => u.id === cls.classTeacherId);
+                        const assistant = users.find((u) => u.id === cls.assistantEducatorId);
+
+                        return (
+                          <tr
+                            key={cls.id}
+                            className={`transition ${
+                              isInactive ? 'bg-amber-50/40 hover:bg-amber-50/70 text-slate-500' : 'hover:bg-slate-50/80'
+                            }`}
+                          >
+                            {/* Class Name & Grade */}
+                            <td className="py-3.5 px-3.5">
+                              <div className="flex items-center gap-2.5">
+                                <div
+                                  className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${
+                                    isInactive ? 'bg-slate-300 text-slate-700' : 'bg-[#4338CA] text-white'
+                                  }`}
+                                >
+                                  {cls.name}
+                                </div>
+                                <div>
+                                  <span className={`font-extrabold text-sm block ${isInactive ? 'text-slate-600 line-through' : 'text-[#0F172A]'}`}>
+                                    {cls.name} сыныбы
+                                  </span>
+                                  <span className="text-[11px] text-slate-400 font-semibold">{cls.grade}-сынып тобы</span>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Academic Year */}
+                            <td className="py-3.5 px-3">
+                              <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold text-[11px] font-mono border border-slate-200">
+                                {cls.academicYearName || '2026–2027'}
+                              </span>
+                            </td>
+
+                            {/* Class Teacher Selector */}
+                            <td className="py-3.5 px-3">
+                              <select
+                                value={cls.classTeacherId || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value || undefined;
+                                  storage.assignStaffToClass(cls.id, 'CLASS_TEACHER', val, currentUser.id, currentUser.name);
+                                  loadData();
+                                  const assignedPerson = users.find((u) => u.id === val);
+                                  showNotification(
+                                    val
+                                      ? `${cls.name} сыныбына жетекші болып «${assignedPerson?.name}» бекітілді!`
+                                      : `${cls.name} сыныбының жетекшісі босатылды.`
+                                  );
+                                }}
+                                className="w-full max-w-[200px] px-2.5 py-1 text-xs font-semibold rounded-lg border border-blue-200 bg-[#EFF6FF] text-blue-950 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                              >
+                                <option value="">— Жетекші тағайындалмаған —</option>
+                                {availableTeachers.map((u) => (
+                                  <option key={u.id} value={u.id}>
+                                    {u.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+
+                            {/* Educator Selector */}
+                            <td className="py-3.5 px-3">
+                              <select
+                                value={cls.educatorId || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value || undefined;
+                                  storage.assignStaffToClass(cls.id, 'EDUCATOR', val, currentUser.id, currentUser.name);
+                                  loadData();
+                                  const assignedPerson = users.find((u) => u.id === val);
+                                  showNotification(
+                                    val
+                                      ? `${cls.name} сыныбына тәрбиеші болып «${assignedPerson?.name}» бекітілді!`
+                                      : `${cls.name} сыныбының тәрбиешісі босатылды.`
+                                  );
+                                }}
+                                className="w-full max-w-[200px] px-2.5 py-1 text-xs font-semibold rounded-lg border border-emerald-200 bg-[#F0FDF4] text-emerald-950 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                              >
+                                <option value="">— Тәрбиеші тағайындалмаған —</option>
+                                {availableEducators.map((u) => (
+                                  <option key={u.id} value={u.id}>
+                                    {u.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+
+                            {/* Assistant Educator */}
+                            <td className="py-3.5 px-3">
+                              {assistant ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-800 border border-purple-200 font-bold text-[11px]">
+                                  {assistant.name}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 text-[11px]">— Тағайындалмаған</span>
+                              )}
+                            </td>
+
+                            {/* Student Count */}
+                            <td className="py-3.5 px-3">
+                              <span className="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-800 font-bold text-xs border border-slate-200">
+                                {count} / 26 оқушы
+                              </span>
+                            </td>
+
+                            {/* Status */}
+                            <td className="py-3.5 px-3">
+                              {isInactive ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                                  ⏸️ Өшірулі
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                  ✅ Белсенді
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Action Buttons */}
+                            <td className="py-3.5 px-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                                {/* Toggle Active / Inactive */}
+                                {isInactive ? (
+                                  <button
+                                    onClick={() => handleToggleClassStatus(cls)}
+                                    className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                                    title="Белсенді ету"
+                                  >
+                                    <Play className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>✅ Белсенді ету</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleToggleClassStatus(cls)}
+                                    className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                                    title="Уақытша өшіру (белсенді емес ету)"
+                                  >
+                                    <Pause className="w-3.5 h-3.5 text-amber-600" />
+                                    <span>⏸️ Уақытша өшіру</span>
+                                  </button>
+                                )}
+
+                                {/* Edit Button */}
+                                <button
+                                  onClick={() => handleOpenClassModal(cls)}
+                                  className="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                                  title="Өзгерту (Сынып атауын, жылын, қызметкерлерін өңдеу)"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+                                  <span>✏️ Өзгерту</span>
+                                </button>
+
+                                {/* Delete Button */}
+                                <button
+                                  onClick={() => handleDeleteClass(cls.id, cls.name)}
+                                  className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                                  title="Өшіру (Оқушылар мен есептер жойылмайды!)"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                                  <span>🗑️ Өшіру</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            }
+
+            // Grid View
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredClasses.map((cls) => {
+                  const isInactive = cls.isActive === false || cls.status === 'inactive';
+                  const edu = users.find((u) => u.id === cls.educatorId);
+                  const teacher = users.find((u) => u.id === cls.classTeacherId);
+                  const assistant = users.find((u) => u.id === cls.assistantEducatorId);
+                  const count = students.filter((s) => s.classId === cls.id).length;
+
+                  return (
+                    <div
+                      key={cls.id}
+                      className={`p-5 rounded-3xl border transition shadow-xs flex flex-col justify-between space-y-4 ${
+                        isInactive
+                          ? 'bg-amber-50/30 border-amber-200'
+                          : 'bg-[#F8FAFC] border-slate-200/90 hover:border-indigo-400'
+                      }`}
+                    >
+                      {/* Class Header */}
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm text-white ${
+                              isInactive ? 'bg-slate-400' : 'bg-[#4338CA]'
+                            }`}
+                          >
+                            {cls.name}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <h4 className="font-extrabold text-sm text-[#0F172A]">{cls.name} сыныбы</h4>
+                              {isInactive && (
+                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                                  ⏸️ Өшірулі
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-slate-400 font-semibold">
+                              {cls.grade}-сынып тобы • {cls.academicYearName || '2026–2027'}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-xs shadow-2xs">
+                          {count} / 26 оқушы
+                        </span>
+                      </div>
+
+                      {/* Educator Box */}
+                      <div className="p-3 rounded-2xl bg-white border border-emerald-200/80 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-emerald-800 flex items-center gap-1.5">
+                            <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Тәрбиеші:</span>
+                          </span>
+                          {edu ? (
+                            <span className="text-[10px] text-emerald-700 font-bold font-mono">ЖСН: {edu.iin}</span>
+                          ) : (
+                            <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded">
+                              Бос
+                            </span>
+                          )}
+                        </div>
+
+                        <select
+                          value={cls.educatorId || ''}
+                          onChange={(e) => {
+                            const val = e.target.value || undefined;
+                            storage.assignStaffToClass(cls.id, 'EDUCATOR', val, currentUser.id, currentUser.name);
+                            loadData();
+                            const assignedPerson = users.find((u) => u.id === val);
+                            showNotification(
+                              val
+                                ? `${cls.name} сыныбына тәрбиеші болып «${assignedPerson?.name}» бекітілді!`
+                                : `${cls.name} сыныбының тәрбиешісі босатылды.`
+                            );
+                          }}
+                          className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-[#F0FDF4] text-slate-800 cursor-pointer"
+                        >
+                          <option value="">— Тәрбиеші тағайындалмаған (Бос) —</option>
+                          {availableEducators.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.name} (ЖСН: {u.iin})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Class Teacher Box */}
+                      <div className="p-3 rounded-2xl bg-white border border-blue-200/80 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-blue-800 flex items-center gap-1.5">
+                            <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Сынып жетекшісі:</span>
+                          </span>
+                          {teacher ? (
+                            <span className="text-[10px] text-blue-700 font-bold font-mono">ЖСН: {teacher.iin}</span>
+                          ) : (
+                            <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded">
+                              Бос
+                            </span>
+                          )}
+                        </div>
+
+                        <select
+                          value={cls.classTeacherId || ''}
+                          onChange={(e) => {
+                            const val = e.target.value || undefined;
+                            storage.assignStaffToClass(cls.id, 'CLASS_TEACHER', val, currentUser.id, currentUser.name);
+                            loadData();
+                            const assignedPerson = users.find((u) => u.id === val);
+                            showNotification(
+                              val
+                                ? `${cls.name} сыныбына жетекші болып «${assignedPerson?.name}» бекітілді!`
+                                : `${cls.name} сыныбының жетекшісі босатылды.`
+                            );
+                          }}
+                          className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#EFF6FF] text-slate-800 cursor-pointer"
+                        >
+                          <option value="">— Жетекші тағайындалмаған (Бос) —</option>
+                          {availableTeachers.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.name} (ЖСН: {u.iin})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Card Action Footer */}
+                      <div className="pt-2 border-t border-slate-200 flex items-center justify-between gap-2">
+                        {isInactive ? (
+                          <button
+                            onClick={() => handleToggleClassStatus(cls)}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <Play className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Белсенді ету</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleToggleClassStatus(cls)}
+                            className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <Pause className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Уақытша өшіру</span>
+                          </button>
+                        )}
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleOpenClassModal(cls)}
+                            className="p-2 text-blue-700 hover:bg-blue-50 border border-blue-200 rounded-xl transition cursor-pointer"
+                            title="Өзгерту"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClass(cls.id, cls.name)}
+                            className="p-2 text-rose-700 hover:bg-rose-50 border border-rose-200 rounded-xl transition cursor-pointer"
+                            title="Өшіру"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -1745,74 +2191,239 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
 
       {/* Class Modal */}
       {showClassModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-gray-100 text-left">
-            <h3 className="font-extrabold text-lg text-[#24342D] pb-3 border-b border-gray-100">
-              Жаңа сынып қосу
-            </h3>
-            <form onSubmit={handleSaveClass} className="mt-4 space-y-3.5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="w-full max-w-lg bg-white rounded-3xl p-6 shadow-2xl border border-gray-100 text-left text-slate-900 max-h-[92vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="pb-3 border-b border-gray-100 flex items-center justify-between">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Сынып атауы (Мысалы, 9B)</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    Сыныптарды басқару
+                  </span>
+                </div>
+                <h3 className="font-extrabold text-lg text-[#0F172A] mt-1">
+                  {editingClass ? 'Сынып мәліметтерін өзгерту' : 'Жаңа сынып қосу'}
+                </h3>
+                <p className="text-xs text-gray-400">
+                  {editingClass
+                    ? `«${editingClass.name}» сыныбының атауын, оқу жылын, қызметкерлерін және күйін жаңарту`
+                    : 'Мектепке жаңа сынып қосып, оған жетекші мен тәрбиешіні бекітіңіз'}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowClassModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveClass} className="mt-4 space-y-4">
+              {/* Class Name & Quick Suggestions */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Сынып атауы <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
                   value={newClassName}
-                  onChange={(e) => setNewClassName(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62]"
+                  onChange={(e) => {
+                    const val = e.target.value.toUpperCase();
+                    setNewClassName(val);
+                    const match = val.match(/^(\d+)/);
+                    if (match && [7, 8, 9, 10, 11].includes(Number(match[1]))) {
+                      setNewClassGrade(Number(match[1]));
+                    }
+                  }}
+                  placeholder="Мысалы, 7А, 7Б, 8А, 9Б, 10А, 11Б"
+                  className="w-full px-3.5 py-2.5 text-sm font-extrabold rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 tracking-wider"
                 />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Параллель (Жасы)</label>
-                <input
-                  type="number"
-                  min={7}
-                  max={11}
-                  required
-                  value={newClassGrade}
-                  onChange={(e) => setNewClassGrade(Number(e.target.value))}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Бекітілген тәрбиеші</label>
-                <select
-                  value={selectedEducatorId}
-                  onChange={(e) => setSelectedEducatorId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62]"
-                >
-                  <option value="">— Тәрбиешіні таңдау —</option>
-                  {educators.map((e) => (
-                    <option key={e.id} value={e.id}>{e.name}</option>
+
+                {/* Quick suggestion badges */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  <span className="text-[10px] text-gray-400 font-semibold mr-1">Үлгілер:</span>
+                  {['7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B', '11A', '11B'].map((sample) => (
+                    <button
+                      type="button"
+                      key={sample}
+                      onClick={() => {
+                        setNewClassName(sample);
+                        const num = Number(sample.replace(/\D/g, ''));
+                        if (num) setNewClassGrade(num);
+                      }}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold border transition cursor-pointer ${
+                        newClassName === sample
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      {sample}
+                    </button>
                   ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Сынып жетекшісі</label>
-                <select
-                  value={selectedTeacherId}
-                  onChange={(e) => setSelectedTeacherId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#138A62]"
-                >
-                  <option value="">— Сынып жетекшісін таңдау —</option>
-                  {teachers.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
+                </div>
               </div>
 
+              {/* Parallel Grade & Academic Year */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">
+                    Параллель (Сынып деңгейі) <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={newClassGrade}
+                    onChange={(e) => setNewClassGrade(Number(e.target.value))}
+                    className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                  >
+                    <option value={7}>7-сынып параллелі</option>
+                    <option value={8}>8-сынып параллелі</option>
+                    <option value={9}>9-сынып параллелі</option>
+                    <option value={10}>10-сынып параллелі</option>
+                    <option value={11}>11-сынып параллелі</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">
+                    Оқу жылы <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={newClassYearId}
+                    onChange={(e) => setNewClassYearId(e.target.value)}
+                    className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-mono"
+                  >
+                    <option value="ay-2026-2027">2026–2027 (Ағымдағы оқу жылы)</option>
+                    <option value="ay-2025-2026">2025–2026 (Алдыңғы оқу жылы)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Staff Assignments: Class Teacher & Main Educator */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
+                <span className="font-black text-[#0F172A] block text-xs">
+                  Сынып қызметкерлерін бекіту
+                </span>
+
+                {/* Class Teacher */}
+                <div>
+                  <label className="block font-bold text-blue-900 mb-1 flex items-center gap-1.5">
+                    <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Сынып жетекшісі:</span>
+                  </label>
+                  <select
+                    value={selectedTeacherId}
+                    onChange={(e) => setSelectedTeacherId(e.target.value)}
+                    className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#EFF6FF] text-blue-950"
+                  >
+                    <option value="">— Сынып жетекшісі тағайындалмаған (Бос) —</option>
+                    {users
+                      .filter((u) => u.role === 'CLASS_TEACHER' || u.role === 'ADMINISTRATOR')
+                      .map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} (ЖСН: {u.iin})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* Main Educator */}
+                <div>
+                  <label className="block font-bold text-emerald-900 mb-1 flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Негізгі тәрбиеші:</span>
+                  </label>
+                  <select
+                    value={selectedEducatorId}
+                    onChange={(e) => setSelectedEducatorId(e.target.value)}
+                    className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-[#F0FDF4] text-emerald-950"
+                  >
+                    <option value="">— Тәрбиеші тағайындалмаған (Бос) —</option>
+                    {users
+                      .filter((u) => u.role === 'EDUCATOR' || u.role === 'ADMINISTRATOR')
+                      .map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} (ЖСН: {u.iin})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* Assistant Educator / Multiple Staff */}
+                <div>
+                  <label className="block font-bold text-purple-900 mb-1 flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Қосымша жауапты қызметкер (Көмекші тәрбиеші):</span>
+                  </label>
+                  <select
+                    value={selectedAssistantEducatorId}
+                    onChange={(e) => setSelectedAssistantEducatorId(e.target.value)}
+                    className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-purple-50/50 text-purple-950"
+                  >
+                    <option value="">— Қосымша қызметкер жоқ —</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.role === 'EDUCATOR' ? 'Тәрбиеші' : u.role === 'CLASS_TEACHER' ? 'Жетекші' : 'Әкімші'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Status Selector */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <label className="block text-xs font-bold text-gray-800">
+                  Белсенділік мәртебесі <span className="text-rose-500">*</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setNewClassActive(true)}
+                    className={`p-2.5 rounded-xl border font-bold text-left flex items-start gap-2 transition cursor-pointer ${
+                      newClassActive
+                        ? 'bg-emerald-50 border-emerald-400 text-emerald-950 ring-2 ring-emerald-500'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-base leading-none">✅</span>
+                    <div>
+                      <div className="font-extrabold text-xs">Белсенді</div>
+                      <div className="text-[10px] text-slate-500 font-normal">Журналдарда, кестелерде және есептерде көрінеді</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewClassActive(false)}
+                    className={`p-2.5 rounded-xl border font-bold text-left flex items-start gap-2 transition cursor-pointer ${
+                      !newClassActive
+                        ? 'bg-amber-50 border-amber-400 text-amber-950 ring-2 ring-amber-500'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-base leading-none">⏸️</span>
+                    <div>
+                      <div className="font-extrabold text-xs">Уақытша өшірулі</div>
+                      <div className="text-[10px] text-slate-500 font-normal">Уақытша жасырылады, оқушылары сақталады</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Footer Buttons */}
               <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowClassModal(false)}
-                  className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-100"
+                  className="px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-100 transition"
                 >
                   Болдырмау
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 rounded-xl bg-[#075C42] text-white text-xs font-bold hover:bg-[#054531] shadow-sm"
+                  className="px-6 py-2.5 rounded-xl bg-[#075C42] hover:bg-[#054531] text-white text-xs font-extrabold shadow-md transition flex items-center gap-1.5 cursor-pointer"
                 >
-                  Қосу
+                  <Check className="w-4 h-4 text-[#FFE9A8]" />
+                  <span>{editingClass ? 'Өзгерістерді сақтау' : 'Сыныпты сақтау'}</span>
                 </button>
               </div>
             </form>
