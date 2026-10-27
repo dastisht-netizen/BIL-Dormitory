@@ -19,6 +19,8 @@ interface AuthContextType {
   isClassTeacher: boolean;
   isCafeteria: boolean;
   canAccessClass: (classId: string) => boolean;
+  canAccessTab: (tab: string) => boolean;
+  userAllowedRoles: Role[];
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -108,17 +110,97 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(false);
   };
 
+  const ROLE_ALLOWED_TABS: Record<Role, string[]> = {
+    ADMINISTRATOR: [
+      'dashboard',
+      'self_study',
+      'attendance',
+      'homework',
+      'meals',
+      'dormitory',
+      'students',
+      'classes',
+      'timetables',
+      'educator_performance',
+      'analytics',
+      'quarterly_reports',
+      'academic_years',
+      'audit_logs',
+      'settings',
+    ],
+    EDUCATOR: [
+      'self_study',
+      'attendance',
+      'homework',
+      'meals',
+      'dormitory',
+    ],
+    CLASS_TEACHER: [
+      'dashboard',
+      'students',
+      'timetables',
+      'attendance',
+      'homework',
+      'analytics',
+      'quarterly_reports',
+    ],
+    CAFETERIA_STAFF: [
+      'dashboard',
+      'meals',
+      'dormitory',
+    ],
+  };
+
+  const userAllowedRoles: Role[] = React.useMemo(() => {
+    if (currentUser.role === 'ADMINISTRATOR') {
+      return ['ADMINISTRATOR', 'EDUCATOR', 'CLASS_TEACHER', 'CAFETERIA_STAFF'];
+    }
+    const roles: Role[] = [currentUser.role];
+    if (currentUser.secondaryRole && !roles.includes(currentUser.secondaryRole)) {
+      roles.push(currentUser.secondaryRole);
+    }
+    if (currentUser.allowedRoles) {
+      currentUser.allowedRoles.forEach((r) => {
+        if (!roles.includes(r)) roles.push(r);
+      });
+    }
+    return roles;
+  }, [currentUser]);
+
+  const canAccessTab = (tab: string): boolean => {
+    if (currentUser.role === 'ADMINISTRATOR') return true;
+    return userAllowedRoles.some((r) => ROLE_ALLOWED_TABS[r]?.includes(tab));
+  };
+
   const switchRole = (role: Role, targetClassId?: string) => {
-    const allUsers = storage.getUsers();
-    let target = allUsers.find((u) => u.role === role);
-    if (role === 'EDUCATOR' && targetClassId) {
-      const match = allUsers.find((u) => u.role === 'EDUCATOR' && u.assignedClassIds?.includes(targetClassId));
-      if (match) target = match;
+    // 1. If Administrator, allows switching/previewing
+    if (currentUser.role === 'ADMINISTRATOR') {
+      const allUsers = storage.getUsers();
+      let target = allUsers.find((u) => u.role === role);
+      if (role === 'EDUCATOR' && targetClassId) {
+        const match = allUsers.find((u) => u.role === 'EDUCATOR' && u.assignedClassIds?.includes(targetClassId));
+        if (match) target = match;
+      }
+      if (target) {
+        setCurrentUser(target);
+        setIsAuthenticated(true);
+      }
+      return;
     }
-    if (target) {
-      setCurrentUser(target);
-      setIsAuthenticated(true);
+
+    // 2. Normal employee: CANNOT switch to unauthorized roles or to ADMINISTRATOR
+    if (!userAllowedRoles.includes(role)) {
+      console.warn(`[Security] Unauthorized attempt by ${currentUser.name} to switch to role ${role}`);
+      return;
     }
+
+    // Switch active role within officially allowed roles (same user identity)
+    const updatedUser: User = {
+      ...currentUser,
+      role,
+    };
+    storage.saveUser(updatedUser, currentUser.id, currentUser.name);
+    setCurrentUser(updatedUser);
   };
 
   const isAdmin = currentUser.role === 'ADMINISTRATOR';
@@ -166,6 +248,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isClassTeacher,
         isCafeteria,
         canAccessClass,
+        canAccessTab,
+        userAllowedRoles,
       }}
     >
       {children}

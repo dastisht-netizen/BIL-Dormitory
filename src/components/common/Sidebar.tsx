@@ -47,7 +47,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
-  const { currentUser, isAdmin, isEducator, isClassTeacher, isCafeteria, siteConfig } = useAuth();
+  const { currentUser, isAdmin, isEducator, isClassTeacher, isCafeteria, siteConfig, canAccessTab } = useAuth();
   const { t } = useLanguage();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
@@ -78,7 +78,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
     { id: 'settings', label: t.nav.settings, icon: Settings, roles: ['ADMINISTRATOR'] },
   ];
 
-  const allowedItems = allNavItems.filter((item) => item.roles.includes(currentUser.role));
+  const allowedItems = allNavItems.filter((item) => canAccessTab(item.id));
 
   const handleSelect = (tab: NavTab) => {
     onSelectTab(tab);

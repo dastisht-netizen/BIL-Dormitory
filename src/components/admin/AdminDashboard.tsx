@@ -97,6 +97,7 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserPhone, setNewUserPhone] = useState('');
   const [newUserRole, setNewUserRole] = useState<Role>('EDUCATOR');
+  const [newSecondaryRole, setNewSecondaryRole] = useState<Role | ''>('');
   const [newAssignedClass, setNewAssignedClass] = useState('');
   const [newUserActive, setNewUserActive] = useState<boolean>(true);
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
@@ -161,6 +162,7 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
       setNewUserName(userToEdit.name);
       setNewUserPhone(userToEdit.phone || '');
       setNewUserRole(userToEdit.role);
+      setNewSecondaryRole(userToEdit.secondaryRole || '');
       setNewAssignedClass(userToEdit.assignedClassIds?.[0] || '');
       setNewUserIin(userToEdit.iin || '');
       setNewUserPassword(userToEdit.password || '');
@@ -171,6 +173,7 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
       setNewUserName('');
       setNewUserPhone('');
       setNewUserRole(presetRole || 'EDUCATOR');
+      setNewSecondaryRole('');
       setNewAssignedClass(presetClassId || '');
       setNewUserEmail('');
       setNewUserActive(true);
@@ -363,6 +366,10 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
       password: passToUse,
       phone: newUserPhone.trim() || undefined,
       role: newUserRole,
+      secondaryRole: (newSecondaryRole && newSecondaryRole !== newUserRole) ? (newSecondaryRole as Role) : undefined,
+      allowedRoles: (newSecondaryRole && newSecondaryRole !== newUserRole)
+        ? [newUserRole, newSecondaryRole as Role]
+        : [newUserRole],
       assignedClassIds: newAssignedClass ? [newAssignedClass] : [],
       isActive: newUserActive,
       status: newUserActive ? 'active' : 'inactive',
@@ -2509,6 +2516,26 @@ export const AdminDashboard: React.FC<{ onNavigate: (tab: any) => void }> = ({ o
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* Optional Secondary Role (Екі рөл қатар тағайындалса) */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Қосымша бекітілген 2-рөл (Қажет болса)
+                </label>
+                <select
+                  value={newSecondaryRole}
+                  onChange={(e) => setNewSecondaryRole(e.target.value as Role | '')}
+                  className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#4338CA] bg-white"
+                >
+                  <option value="">— Қосымша рөл жоқ (Тек 1 ресми рөл) —</option>
+                  <option value="EDUCATOR">Тәрбиеші (Educator)</option>
+                  <option value="CLASS_TEACHER">Сынып жетекшісі (Class Teacher)</option>
+                  <option value="CAFETERIA_STAFF">Асхана қызметкері</option>
+                </select>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Егер бір қызметкерге екі рөл ресми бекітілсе, сол қызметкерге ғана өзіне бекітілген рөлдердің тиісті бөлімдеріне ауысу мүмкіндігі ашылады.
+                </p>
               </div>
 
               {/* Status Selector */}

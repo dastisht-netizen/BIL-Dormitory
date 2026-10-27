@@ -13,6 +13,8 @@ export interface User {
   iin?: string; // 12-digit IIN login (ЖСН)
   password?: string;
   role: Role;
+  secondaryRole?: Role; // Қосымша бекітілген 2-рөл (мысалы, тәрбиеші әрі сынып жетекшісі)
+  allowedRoles?: Role[]; // Қызметкерге рұқсат етілген ресми рөлдер тізімі
   assignedClassIds?: string[]; // Classes this user is responsible for
   phone?: string;
   avatarUrl?: string;
